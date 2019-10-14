@@ -3,6 +3,8 @@ const jwt = require('express-jwt');
 const jwksRsa = require('jwks-rsa');
 const cors = require('cors');
 const bodyParser = require('body-parser');
+const axios = require('axios');
+const authConfig = require('./auth_config.json');
 
 // set dependencies 
 const jwtAuthz = require('express-jwt-authz');
@@ -11,10 +13,12 @@ const jwtAuthz = require('express-jwt-authz');
 const app = express();
 
 // Set up Auth0 configuration
+/*
 const authConfig = {
   domain: "ogazitt.auth0.com",
   audience: "https://api.saasmaster.co"
 };
+*/
 
 // Enable CORS
 app.use(cors());
@@ -44,19 +48,113 @@ app.use(bodyParser.urlencoded({
 // Get timesheets API endpoint
 app.get('/timesheets', checkJwt, jwtAuthz(['read:timesheets']), function(req, res){
   
-  console.log('get api');
+  const email = req.user[`${authConfig.audience}/email`];
+  const userId = req.user['sub'];
+  console.log(`/timesheets: user: ${userId}; email: ${email}`);
 
-  var userId = req.user['https://api.saasmaster.co/email'];
-  console.log(`user: ${userId}`);
+  const getManagementAccessToken = async () => {
+    try {
+      const url = `https://${authConfig.domain}/oauth/token`;
+      const headers = { 'content-type': 'application/json' };
+      const body = { 
+        client_id: authConfig.client_id,
+        client_secret: authConfig.client_secret,
+        audience: `https://${authConfig.domain}/api/v2/`,
+        grant_type:"client_credentials"
+      };
+  
+      const response = await axios.post(
+        url,
+        body,
+        {
+          headers: headers
+        });
+      const data = response.data;
+      if (data && data.access_token) {
+        console.log(`received token: ${data.access_token}`);
+        return data.access_token;
+      }
+      console.log('error - did not find token');
+      return null;
+    } catch (error) {
+      console.log(`catch error from getToken: ${error}`);
+      res.status(500).send(error);
+    }
+  };
 
-  var timesheet = {};
-  timesheet.user_id = userId;
-  timesheet.message = 'hello, world';
+  const getGoogleToken = async (managementToken) => {
+    try {
+      const url = encodeURI(`https://${authConfig.domain}/api/v2/users/${userId}`);
+      const headers = { 
+        'content-type': 'application/json',
+        'authorization': `Bearer ${managementToken}`
+      };
 
-  // Save the timesheet to the database...
+      console.log(`getting full user profile for user ${userId}`);
+      console.log(`calling url ${url}`);
+      const response = await axios.get(
+        url,
+        {
+          headers: headers
+        });
+      const user = response.data;
+      const access_token = user && user.identities[0].access_token;
+      if (!access_token) {
+        console.log('error - did not find token');
+        res.status(500).send(error);
+        return null;
+      }
+      console.log(`received google access token: ${access_token}`);
+      return access_token;
+    } catch (error) {
+      console.log(`catch error from getGoogleToken: ${error}`);
+      return null;
+    }
+  };
 
-  //send the response
-  res.status(200).send(timesheet);
+  const callAPI = async () => {
+    try {
+      const managementToken = await(getManagementAccessToken());
+      const token = await(getGoogleToken(managementToken));
+      if (!token) {
+        console.log('callAPI did not receive token');
+        res.status(500).send({ message: 'no token'});
+        return null;
+      }
+
+      const url = 'https://www.googleapis.com/calendar/v3/users/me/calendarList';
+      const headers = { 
+        'content-type': 'application/json',
+        'authorization': `Bearer ${token}`
+       };
+  
+      console.log('about to call google calendar API');
+      const response = await axios.get(
+        url,
+        {
+          headers: headers
+        });
+      const data = response.data;
+      console.log('google returned data:');
+      console.log(data);
+      if (data) {
+        // SUCCESS! send the data from google
+        data.user_id = email;
+        data.message = 'hello, world';
+        res.status(200).send(data);
+        return;
+      }
+      res.status(404).send({ message: 'no data returned from google'});
+    } catch (error) {
+      console.log('about to log error object');
+      const err = await error.response;
+      console.log(err.response);
+      res.status(500).send(err.response);
+      return null;
+    }
+  };
+  
+  callAPI();
 });
 
 // Create timesheets API endpoint
@@ -64,7 +162,7 @@ app.post('/timesheets', checkJwt, jwtAuthz(['create:timesheets']), function(req,
   console.log('post api');
   var timesheet = req.body;
 
-  var userId = req.user['https://api.saasmaster.co/email'];
+  var userId = req.user[`${authConfig.audience}/email`];
   timesheet.user_id = userId;
 
   // Save the timesheet to the database...
