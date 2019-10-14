@@ -71,7 +71,6 @@ app.get('/timesheets', checkJwt, jwtAuthz(['read:timesheets']), function(req, re
         });
       const data = response.data;
       if (data && data.access_token) {
-        console.log(`received token: ${data.access_token}`);
         return data.access_token;
       }
       console.log('error - did not find token');
@@ -90,8 +89,6 @@ app.get('/timesheets', checkJwt, jwtAuthz(['read:timesheets']), function(req, re
         'authorization': `Bearer ${managementToken}`
       };
 
-      console.log(`getting full user profile for user ${userId}`);
-      console.log(`calling url ${url}`);
       const response = await axios.get(
         url,
         {
@@ -104,7 +101,6 @@ app.get('/timesheets', checkJwt, jwtAuthz(['read:timesheets']), function(req, re
         res.status(500).send(error);
         return null;
       }
-      console.log(`received google access token: ${access_token}`);
       return access_token;
     } catch (error) {
       console.log(`catch error from getGoogleToken: ${error}`);
@@ -128,15 +124,12 @@ app.get('/timesheets', checkJwt, jwtAuthz(['read:timesheets']), function(req, re
         'authorization': `Bearer ${token}`
        };
   
-      console.log('about to call google calendar API');
       const response = await axios.get(
         url,
         {
           headers: headers
         });
       const data = response.data;
-      console.log('google returned data:');
-      console.log(data);
       if (data) {
         // SUCCESS! send the data from google
         data.user_id = email;
@@ -146,9 +139,8 @@ app.get('/timesheets', checkJwt, jwtAuthz(['read:timesheets']), function(req, re
       }
       res.status(404).send({ message: 'no data returned from google'});
     } catch (error) {
-      console.log('about to log error object');
       const err = await error.response;
-      console.log(err.response);
+      console.log(`error: ${error}`);
       res.status(500).send(err.response);
       return null;
     }
