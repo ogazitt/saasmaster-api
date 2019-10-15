@@ -1,6 +1,10 @@
 # secrets
 auth_config.json
 
+# build directory contains built react app artifacts
+# they are in a different repo
+build/
+
 # Logs
 logs
 *.log

@@ -2,8 +2,12 @@
   "name": "saasmaster-api",
   "version": "1.0.0",
   "description": "API for SaaSMaster app",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
+    "start": "node server.js",
+    "copy": "cp -r ../saasmaster/build/* build",
+    "build": "gcloud builds submit --tag gcr.io/saasmaster/saasmaster-api",
+    "deploy": "gcloud beta run deploy --image gcr.io/saasmaster/saasmaster-api --platform managed",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Omri Gazitt",

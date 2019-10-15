@@ -164,5 +164,8 @@ app.post('/timesheets', checkJwt, jwtAuthz(['create:timesheets']), function(req,
   res.status(201).send(timesheet);
 });
 
-// Launch the API Server at localhost:8080
-app.listen(8080);
+// Launch the API Server at PORT, or default port 8080
+const port = process.env.PORT || 8080;
+app.listen(port, () => {
+  console.log('SaaSMaster listening on port', port);
+});
