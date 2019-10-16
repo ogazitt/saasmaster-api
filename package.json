@@ -5,9 +5,11 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "build-spa": "cd ../saasmaster && npm run build",
     "copy": "cp -r ../saasmaster/build/* build",
     "build": "gcloud builds submit --tag gcr.io/saasmaster/saasmaster-api",
-    "deploy": "gcloud beta run deploy --image gcr.io/saasmaster/saasmaster-api --platform managed",
+    "deploy": "gcloud beta run deploy saasmaster-api --image gcr.io/saasmaster/saasmaster-api --platform managed",
+    "push": "npm run build-spa && npm run copy && npm run build && npm run deploy",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Omri Gazitt",
