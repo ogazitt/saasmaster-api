@@ -41,10 +41,7 @@ app.use(bodyParser.urlencoded({
 // configure a static file server
 app.use(express.static(path.join(__dirname, 'build')));
 
-// main endpoint serves react bundle from /build
-app.get('/', function(req, res) {
-  res.sendFile(path.join(__dirname, 'build', 'index.html'));
-});
+const users = {};
 
 // Get timesheets API endpoint
 app.get('/timesheets', checkJwt, jwtAuthz(['read:timesheets']), function(req, res){
@@ -61,7 +58,7 @@ app.get('/timesheets', checkJwt, jwtAuthz(['read:timesheets']), function(req, re
         client_id: authConfig.client_id,
         client_secret: authConfig.client_secret,
         audience: `https://${authConfig.domain}/api/v2/`,
-        grant_type:"client_credentials"
+        grant_type: 'client_credentials'
       };
   
       const response = await axios.post(
@@ -77,7 +74,7 @@ app.get('/timesheets', checkJwt, jwtAuthz(['read:timesheets']), function(req, re
       console.log('error - did not find token');
       return null;
     } catch (error) {
-      console.log(`catch error from getToken: ${error}`);
+      console.log(`getManagementAccessToken: caught exception: ${error}`);
       res.status(500).send(error);
     }
   };
@@ -96,15 +93,86 @@ app.get('/timesheets', checkJwt, jwtAuthz(['read:timesheets']), function(req, re
           headers: headers
         });
       const user = response.data;
-      const access_token = user && user.identities[0].access_token;
+      var access_token = user && user.identities[0].access_token;
       if (!access_token) {
-        console.log('error - did not find token');
-        res.status(500).send(error);
+        return null;
+      }
+
+      const refresh_token = user && user.identities[0].refresh_token;
+      if (refresh_token) {
+        // store refresh token in DB
+        users[userId] = refresh_token;
+      }
+
+      // check for token expiration
+      if (tokenExpired(user)) {
+        access_token = null;
+        const refreshToken = users[userId];
+        if (refreshToken) {
+          access_token = await getAccessTokenForGoogleRefreshToken(refreshToken);
+        } else {
+          // no refresh token
+          return null;
+        }
+      }
+      if (!access_token) {
+        return null;
+      }
+
+      // return the (potentially refreshed) access token
+      return access_token;
+    } catch (error) {
+      console.log(`getGoogleToken: caught exception: ${error}`);
+      return null;
+    }
+  };
+
+  const tokenExpired = (user) => {
+    try {
+      const lastUpdated = new Date(user.updated_at);
+      const expiresIn = user.identities[0].expires_in;
+      lastUpdated.setSeconds(lastUpdated.getSeconds() + expiresIn);
+      const now = Date.now();
+      if (lastUpdated > now) {
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.log(`tokenExpired: caught exception: ${error}`);
+      return true;
+    }
+  }
+
+  const getAccessTokenForGoogleRefreshToken = async(refreshToken) => {
+    try {
+      const url = 'https://www.googleapis.com/oauth2/v4/token';
+      const headers = { 
+        'content-type': 'application/json',
+      };
+      const body = {
+        client_id: authConfig.google_client_id,
+        client_secret: authConfig.google_client_secret,
+        refresh_token: refreshToken,
+        grant_type: 'refresh_token'
+      }
+
+      const response = await axios.post(
+        url,
+        body,
+        {
+          headers: headers
+        },
+      );
+      const data = response.data;
+      console.log(data);
+      const access_token = data && data.access_token;
+      if (!access_token) {
         return null;
       }
       return access_token;
     } catch (error) {
-      console.log(`catch error from getGoogleToken: ${error}`);
+      await error.response;
+      console.log(`getAccessTokenForGoogleRefreshToken: caught exception: ${error}`);
       return null;
     }
   };
@@ -112,14 +180,20 @@ app.get('/timesheets', checkJwt, jwtAuthz(['read:timesheets']), function(req, re
   const callAPI = async () => {
     try {
       const managementToken = await(getManagementAccessToken());
-      const token = await(getGoogleToken(managementToken));
+      if (!managementToken) {
+        console.log('callAPI: getManagementAccessToken failed');
+        res.status(200).send({ message: 'no management token'});
+        return;
+      }
+      var token = await(getGoogleToken(managementToken));
       if (!token) {
-        console.log('callAPI did not receive token');
-        res.status(500).send({ message: 'no token'});
-        return null;
+        console.log('callAPI: getGoogleToken failed');
+        res.status(200).send({ message: 'no google token'});
+        return;
       }
 
       const url = 'https://www.googleapis.com/calendar/v3/users/me/calendarList';
+      //const url = 'https://www.google.com/m8/feeds/contacts/ogazitt%40gmail.com/full';
       const headers = { 
         'content-type': 'application/json',
         'authorization': `Bearer ${token}`
@@ -140,10 +214,10 @@ app.get('/timesheets', checkJwt, jwtAuthz(['read:timesheets']), function(req, re
       }
       res.status(404).send({ message: 'no data returned from google'});
     } catch (error) {
-      const err = await error.response;
-      console.log(`error: ${error}`);
-      res.status(500).send(err.response);
-      return null;
+      await error.response;
+      console.log(`callAPI: caught exception: ${error}`);
+      res.status(500).send({ message: error });
+      return;
     }
   };
   
@@ -162,6 +236,11 @@ app.post('/timesheets', checkJwt, jwtAuthz(['create:timesheets']), function(req,
 
   //send the response
   res.status(201).send(timesheet);
+});
+
+// main endpoint serves react bundle from /build
+app.get('/*', function(req, res) {
+  res.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
 
 // Launch the API Server at PORT, or default port 8080
