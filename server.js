@@ -71,7 +71,6 @@ app.get('/timesheets', checkJwt, jwtAuthz(['read:timesheets']), function(req, re
       if (data && data.access_token) {
         return data.access_token;
       }
-      console.log('error - did not find token');
       return null;
     } catch (error) {
       console.log(`getManagementAccessToken: caught exception: ${error}`);
@@ -164,7 +163,6 @@ app.get('/timesheets', checkJwt, jwtAuthz(['read:timesheets']), function(req, re
         },
       );
       const data = response.data;
-      console.log(data);
       const access_token = data && data.access_token;
       if (!access_token) {
         return null;
