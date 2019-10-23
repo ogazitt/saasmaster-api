@@ -41,6 +41,7 @@ app.use(bodyParser.urlencoded({
 // configure a static file server
 app.use(express.static(path.join(__dirname, 'build')));
 
+// initialize the users hash (current storage method)
 const users = {};
 
 // Get timesheets API endpoint
@@ -50,7 +51,7 @@ app.get('/timesheets', checkJwt, jwtAuthz(['read:timesheets']), function(req, re
   const userId = req.user['sub'];
   console.log(`/timesheets: user: ${userId}; email: ${email}`);
 
-  const getManagementAccessToken = async () => {
+  const getManagementAPIAccessToken = async () => {
     try {
       const url = `https://${authConfig.domain}/oauth/token`;
       const headers = { 'content-type': 'application/json' };
@@ -73,12 +74,13 @@ app.get('/timesheets', checkJwt, jwtAuthz(['read:timesheets']), function(req, re
       }
       return null;
     } catch (error) {
-      console.log(`getManagementAccessToken: caught exception: ${error}`);
-      res.status(500).send(error);
+      await error.response;
+      console.log(`getManagementAPIAccessToken: caught exception: ${error}`);
+      return null;
     }
   };
 
-  const getGoogleToken = async (managementToken) => {
+  const getGoogleTokenFromManagementAPI = async (userId, managementToken) => {
     try {
       const url = encodeURI(`https://${authConfig.domain}/api/v2/users/${userId}`);
       const headers = { 
@@ -92,47 +94,105 @@ app.get('/timesheets', checkJwt, jwtAuthz(['read:timesheets']), function(req, re
           headers: headers
         });
       const user = response.data;
-      var access_token = user && user.identities[0].access_token;
-      if (!access_token) {
+      const userIdentity = user && user.identities && user.identities[0];
+      if (!userIdentity) {
         return null;
       }
 
-      const refresh_token = user && user.identities[0].refresh_token;
-      if (refresh_token) {
-        // store refresh token in DB
-        users[userId] = refresh_token;
+      var accessToken = userIdentity.access_token;
+      var refreshToken = userIdentity.refresh_token; // could be empty
+      const timestamp = user.updated_at;
+      const expiresIn = userIdentity.expires_in;
+
+      // if no access token, no way to proceed
+      if (!accessToken) {
+        return null;
       }
 
+      // store / cache the access token 
+      const thisUser = setUserData(
+        userId,
+        accessToken,
+        timestamp,
+        expiresIn,
+        refreshToken);
+
       // check for token expiration
-      if (tokenExpired(user)) {
-        access_token = null;
-        const refreshToken = users[userId];
-        if (refreshToken) {
-          access_token = await getAccessTokenForGoogleRefreshToken(refreshToken);
-        } else {
-          // no refresh token
-          return null;
-        }
+      if (tokenExpired(thisUser)) {
+        accessToken = null;
+
+        // get a new access token using the refresh token
+        if (thisUser.refreshToken) {
+          accessToken = await getAccessTokenForGoogleRefreshToken(userId, thisUser.refreshToken);
+        } 
       }
-      if (!access_token) {
+
+      // if couldn't obtain a valid access token, return null
+      if (!accessToken) {
         return null;
       }
 
       // return the (potentially refreshed) access token
-      return access_token;
+      return accessToken;
     } catch (error) {
-      console.log(`getGoogleToken: caught exception: ${error}`);
+      await error.response;
+      console.log(`getGoogleTokenFromManagementAPI: caught exception: ${error}`);
       return null;
     }
   };
 
+  // get user data by userid 
+  // FEATURE: this should be moved to a DB in the future
+  const getUserData = (userId) => {
+    return users[userId];
+  };
+
+  // store user data by userid
+  // FEATURE: this should be moved to a DB in the future
+  const setUserData = (
+      userId,            // userid to store data for
+      accessToken,       // access token
+      created,           // timestamp when token was created
+      expiresIn,         // expires in (seconds)
+      refreshToken) => { // refresh token (may be null)
+
+    try {
+      // compute the expiration timestamp
+      const timestamp = new Date(created);
+      timestamp.setSeconds(timestamp.getSeconds() + expiresIn);
+
+      // store the access token in the users hash
+      if (!users[userId]) {
+        // if an entry doesn't yet exist, create it
+        users[userId] = 
+        { 
+          accessToken: accessToken,
+          expiresAt: timestamp
+        };
+      } else {
+        users[userId].accessToken = accessToken;
+        users[userId].expiresAt = timestamp;
+      }
+
+      // also store / overwrite refresh token only if it was present
+      if (refreshToken) {
+        // store refresh token (entry in users hash must exist)
+        users[userId].refreshToken = refreshToken;
+      }
+
+      // return the refreshed user hash
+      return users[userId];
+    } catch (error) {
+      console.log(`setUserData: caught exception: ${error}`);
+      return null;
+    }
+  }
+
   const tokenExpired = (user) => {
     try {
-      const lastUpdated = new Date(user.updated_at);
-      const expiresIn = user.identities[0].expires_in;
-      lastUpdated.setSeconds(lastUpdated.getSeconds() + expiresIn);
+      const timestamp = user.expiresAt;
       const now = Date.now();
-      if (lastUpdated > now) {
+      if (timestamp > now) {
         return false;
       }
       return true;
@@ -142,7 +202,7 @@ app.get('/timesheets', checkJwt, jwtAuthz(['read:timesheets']), function(req, re
     }
   }
 
-  const getAccessTokenForGoogleRefreshToken = async(refreshToken) => {
+  const getAccessTokenForGoogleRefreshToken = async(userId, refreshToken) => {
     try {
       const url = 'https://www.googleapis.com/oauth2/v4/token';
       const headers = { 
@@ -163,11 +223,15 @@ app.get('/timesheets', checkJwt, jwtAuthz(['read:timesheets']), function(req, re
         },
       );
       const data = response.data;
-      const access_token = data && data.access_token;
-      if (!access_token) {
+      const accessToken = data && data.access_token;
+      if (!accessToken) {
         return null;
       }
-      return access_token;
+
+      // store the new user data
+      setUserData(userId, accessToken, Date.now(), data.expires_in, null);
+
+      return accessToken;
     } catch (error) {
       await error.response;
       console.log(`getAccessTokenForGoogleRefreshToken: caught exception: ${error}`);
@@ -175,18 +239,43 @@ app.get('/timesheets', checkJwt, jwtAuthz(['read:timesheets']), function(req, re
     }
   };
 
+  const getGoogleAccessToken = async (userId) => {
+
+    const user = getUserData(userId);
+
+    // if an access token is already cached, and not expired, return it
+    if (user && !tokenExpired(user)) {
+      return user.accessToken;
+    }
+
+    // we don't have a token, or it's already expired; need to 
+    // obtain a new one from the management API
+    try {
+      const managementToken = await getManagementAPIAccessToken();
+      if (!managementToken) {
+        console.log('callAPI: getManagementAPIAccessToken failed');
+        return null;
+      }
+      var token = await getGoogleTokenFromManagementAPI(userId, managementToken);
+      if (!token) {
+        console.log('callAPI: getGoogleTokenFromManagementAPI failed');
+        return null;
+      }
+      // return the google access token
+      return token;
+    } catch (error) {
+      await error.response;
+      console.log(`getGoogleAccessToken: caught exception: ${error}`);
+      return null;
+    }
+  };
+
   const callAPI = async () => {
     try {
-      const managementToken = await(getManagementAccessToken());
-      if (!managementToken) {
-        console.log('callAPI: getManagementAccessToken failed');
-        res.status(200).send({ message: 'no management token'});
-        return;
-      }
-      var token = await(getGoogleToken(managementToken));
-      if (!token) {
-        console.log('callAPI: getGoogleToken failed');
-        res.status(200).send({ message: 'no google token'});
+      const accessToken = await getGoogleAccessToken(userId);
+      if (!accessToken) {
+        console.log('callAPI: getGoogleAccessToken failed');
+        res.status(200).send({ message: 'no access token'});
         return;
       }
 
@@ -194,7 +283,7 @@ app.get('/timesheets', checkJwt, jwtAuthz(['read:timesheets']), function(req, re
       //const url = 'https://www.google.com/m8/feeds/contacts/ogazitt%40gmail.com/full';
       const headers = { 
         'content-type': 'application/json',
-        'authorization': `Bearer ${token}`
+        'authorization': `Bearer ${accessToken}`
        };
   
       const response = await axios.get(
