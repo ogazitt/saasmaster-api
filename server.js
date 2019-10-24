@@ -49,42 +49,23 @@ app.get('/timesheets', checkJwt, jwtAuthz(['read:timesheets']), function(req, re
   const userId = req.user['sub'];
   console.log(`/timesheets: user: ${userId}; email: ${email}`);
 
- 
-
   const callAPI = async () => {
     try {
-      const accessToken = await google.getGoogleAccessToken(userId);
-      if (!accessToken) {
-        console.log('callAPI: getGoogleAccessToken failed');
-        res.status(200).send({ message: 'no access token'});
+      const data = await google.getCalendarData(userId);
+      //const data = await google.getGoogleLocations(userId);
+      if (!data) {
+        console.log('callAPI: no data returned');
+        res.status(200).send({ message: 'no data returned'});
         return;
       }
 
-      const url = 'https://www.googleapis.com/calendar/v3/users/me/calendarList';
-      //const url = 'https://www.google.com/m8/feeds/contacts/ogazitt%40gmail.com/full';
-      const headers = { 
-        'content-type': 'application/json',
-        'authorization': `Bearer ${accessToken}`
-       };
-  
-      const response = await axios.get(
-        url,
-        {
-          headers: headers
-        });
-      const data = response.data;
-      if (data) {
-        // SUCCESS! send the data from google
-        data.user_id = email;
-        data.message = 'hello, world';
-        res.status(200).send(data);
-        return;
-      }
-      res.status(404).send({ message: 'no data returned from google'});
+      // SUCCESS! send the data back to the client
+      res.status(200).send(data);
+      return;
     } catch (error) {
       await error.response;
       console.log(`callAPI: caught exception: ${error}`);
-      res.status(500).send({ message: error });
+      res.status(200).send({ message: error });
       return;
     }
   };

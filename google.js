@@ -1,7 +1,9 @@
 // google utility functions
 
 // exports:
-// google.getGoogleAccessToken(): abstracts all logic to retrieve a google access token
+// getGoogleAccessToken(userId): abstracts all logic to retrieve a google access token
+// getCalendarData(userId): get calendar data for the userId
+// getGoogleLocations(userId): get google mybusiness location data
 
 const axios = require('axios');
 const database = require('./database');
@@ -34,6 +36,70 @@ exports.getGoogleAccessToken = async (userId) => {
   } catch (error) {
     await error.response;
     console.log(`getGoogleAccessToken: caught exception: ${error}`);
+    return null;
+  }
+};
+
+exports.getCalendarData = async (userId) => {
+  try {
+    const accessToken = await exports.getGoogleAccessToken(userId);
+    if (!accessToken) {
+      console.log('getCalendarData: getGoogleAccessToken failed');
+      return null;
+    }
+
+    const url = 'https://www.googleapis.com/calendar/v3/users/me/calendarList';
+    //const url = 'https://www.google.com/m8/feeds/contacts/ogazitt%40gmail.com/full';
+    const headers = { 
+      'content-type': 'application/json',
+      'authorization': `Bearer ${accessToken}`
+     };
+
+    const response = await axios.get(
+      url,
+      {
+        headers: headers
+      });
+    // response received successfully
+    return response.data;
+  } catch (error) {
+    await error.response;
+    console.log(`getCalendarData: caught exception: ${error}`);
+    return null;
+  }
+};
+
+exports.getGoogleLocations = async (userId) => {
+  try {
+    const accessToken = await exports.getGoogleAccessToken(userId);
+    if (!accessToken) {
+      console.log('getGoogleLocations: getGoogleAccessToken failed');
+      return null;
+    }
+
+    const url = 'https://mybusiness.googleapis.com/v4/googleLocations:search';
+    const headers = { 
+      'content-type': 'application/json',
+      'authorization': `Bearer ${accessToken}`
+    };
+    const body = {
+      resultCount: 10,
+      search_query: 'fatburger'
+    }
+
+    const response = await axios.post(
+      url,
+      body,
+      {
+        headers: headers
+      },
+    );
+    // response received successfully
+    console.log(`getGoogleLocations data: ${response.data}`);
+    return response.data;
+  } catch (error) {
+    await error.response;
+    console.log(`getGoogleLocations: caught exception: ${error}`);
     return null;
   }
 };
