@@ -7,6 +7,7 @@ const bodyParser = require('body-parser');
 const axios = require('axios');
 const authConfig = require('./auth_config.json');
 const google = require('./google');
+const database = require('./database');
 
 // set dependencies 
 const jwtAuthz = require('express-jwt-authz');
@@ -71,6 +72,17 @@ app.get('/timesheets', checkJwt, jwtAuthz(['read:timesheets']), function(req, re
   };
   
   callAPI();
+});
+
+// Get connections API endpoint
+app.get('/connections', checkJwt, jwtAuthz(['read:timesheets']), function(req, res){
+  
+  const email = req.user[`${authConfig.audience}/email`];
+  const userId = req.user['sub'];
+  console.log(`/connections: user: ${userId}; email: ${email}`);
+
+  const user = database.getUserData(userId) || {};
+  res.status(200).send(user);
 });
 
 // Create timesheets API endpoint
