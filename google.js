@@ -11,10 +11,10 @@ const authConfig = require('./auth_config.json');
 
 exports.getGoogleAccessToken = async (userId) => {
 
-  const user = database.getUserData(userId);
+  const user = await database.getUserData(userId);
 
   // if an access token is already cached, and not expired, return it
-  if (user && !tokenExpired(user)) {
+  if (user && !database.tokenExpired(user)) {
     return user.accessToken;
   }
 
@@ -163,7 +163,7 @@ const getGoogleTokenFromManagementAPI = async (userId, managementToken) => {
     }
 
     // store / cache the access token 
-    const thisUser = database.setUserData(
+    const thisUser = await database.setUserData(
       userId,
       accessToken,
       timestamp,
@@ -171,7 +171,7 @@ const getGoogleTokenFromManagementAPI = async (userId, managementToken) => {
       refreshToken);
 
     // check for token expiration
-    if (tokenExpired(thisUser)) {
+    if (database.tokenExpired(thisUser)) {
       accessToken = null;
 
       // get a new access token using the refresh token
@@ -193,20 +193,6 @@ const getGoogleTokenFromManagementAPI = async (userId, managementToken) => {
     return null;
   }
 };
-
-const tokenExpired = (user) => {
-  try {
-    const timestamp = user.expiresAt;
-    const now = Date.now();
-    if (timestamp > now) {
-      return false;
-    }
-    return true;
-  } catch (error) {
-    console.log(`tokenExpired: caught exception: ${error}`);
-    return true;
-  }
-}
 
 const getAccessTokenForGoogleRefreshToken = async(userId, refreshToken) => {
   try {
@@ -235,7 +221,7 @@ const getAccessTokenForGoogleRefreshToken = async(userId, refreshToken) => {
     }
 
     // store the new user data
-    database.setUserData(userId, accessToken, Date.now(), data.expires_in, null);
+    database.setUserData(userId, accessToken, new Date(), data.expires_in, null);
 
     return accessToken;
   } catch (error) {

@@ -1,51 +1,36 @@
-// some database get/set functions for various entities
+// some generic database get/set functions for various entities
 
-// initialize the users hash (current storage method)
-const users = {};
+// import providers
+const firestore = require('./database-firestore')
+const memory = require('./database-memory')
+
+// define providers hash
+const providers = {
+  firestore: firestore,
+  memory: memory
+}
+
+// set the provider
+const provider = providers['firestore']
+//const provider = providers['memory']
+
 
 // get user data by userid 
-// FEATURE: this should be moved to a DB in the future
-exports.getUserData = (userId) => {
-  return users[userId];
-};
+exports.getUserData = async (userId) => {
+  return await provider.getUserData(userId)
+}
 
 // store user data by userid
-// FEATURE: this should be moved to a DB in the future
-exports.setUserData = (
+exports.setUserData = async (
     userId,            // userid to store data for
     accessToken,       // access token
     created,           // timestamp when token was created
     expiresIn,         // expires in (seconds)
     refreshToken) => { // refresh token (may be null)
 
-  try {
-    // compute the expiration timestamp
-    const timestamp = new Date(created);
-    timestamp.setSeconds(timestamp.getSeconds() + expiresIn);
+    return await provider.setUserData(userId, accessToken, created, expiresIn, refreshToken)
+}
 
-    // store the access token in the users hash
-    if (!users[userId]) {
-      // if an entry doesn't yet exist, create it
-      users[userId] = 
-      { 
-        accessToken: accessToken,
-        expiresAt: timestamp
-      };
-    } else {
-      users[userId].accessToken = accessToken;
-      users[userId].expiresAt = timestamp;
-    }
-
-    // also store / overwrite refresh token only if it was present
-    if (refreshToken) {
-      // store refresh token (entry in users hash must exist)
-      users[userId].refreshToken = refreshToken;
-    }
-
-    // return the refreshed user hash
-    return users[userId];
-  } catch (error) {
-    console.log(`setUserData: caught exception: ${error}`);
-    return null;
-  }
+exports.tokenExpired = (user) => {
+  return provider.tokenExpired(user);
 }

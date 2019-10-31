@@ -81,8 +81,12 @@ app.get('/connections', checkJwt, jwtAuthz(['read:timesheets']), function(req, r
   const userId = req.user['sub'];
   console.log(`/connections: user: ${userId}; email: ${email}`);
 
-  const user = database.getUserData(userId) || {};
-  res.status(200).send(user);
+  const returnUserInfo = async () => {
+    const user = await database.getUserData(userId) || {};
+    res.status(200).send(user);
+  }
+
+  returnUserInfo();
 });
 
 // Create timesheets API endpoint
