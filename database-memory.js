@@ -4,13 +4,15 @@
 const users = {};
 
 // get user data by userid 
-exports.getUserData = async (userId) => {
-  return users[userId];
+exports.getUserData = async (userId, connection) => {
+  const user = users[userId];
+  return user && user[connection];
 };
 
 // store user data by userid
 exports.setUserData = async (
     userId,            // userid to store data for
+    connection,        // connection key
     accessToken,       // access token
     created,           // timestamp when token was created
     expiresIn,         // expires in (seconds)
@@ -22,26 +24,22 @@ exports.setUserData = async (
     timestamp.setSeconds(timestamp.getSeconds() + expiresIn);
 
     // store the access token in the users hash
-    if (!users[userId]) {
-      // if an entry doesn't yet exist, create it
-      users[userId] = 
-      { 
-        accessToken: accessToken,
-        expiresAt: timestamp
-      };
-    } else {
-      users[userId].accessToken = accessToken;
-      users[userId].expiresAt = timestamp;
-    }
+    const user = users[userId] || {};
+    const connectionData = user[connection] || {};
+    connectionData.accessToken = accessToken;
+    connectionData.expiresAt = timestamp;
 
     // also store / overwrite refresh token only if it was present
     if (refreshToken) {
-      // store refresh token (entry in users hash must exist)
-      users[userId].refreshToken = refreshToken;
+      connectionData.refreshToken = refreshToken;
     }
 
-    // return the refreshed user hash
-    return users[userId];
+    // replace the connection data and store the new user data
+    user[connection] = connectionData;
+    users[userId] = user;
+
+    // return the refreshed connection data
+    return connectionData;
   } catch (error) {
     console.log(`setUserData: caught exception: ${error}`);
     return null;
