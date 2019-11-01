@@ -4,7 +4,9 @@
   "description": "API for SaaSMaster app",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "NODE_ENV=dev node server.js",
+    "start:dev": "NODE_ENV=dev node server.js",
+    "start:prod": "NODE_ENV=prod node server.js",
     "build-spa": "cd ../saasmaster && npm run build",
     "copy": "cp -r ../saasmaster/build/* build",
     "build": "gcloud builds submit --tag gcr.io/saasmaster/saasmaster-api",

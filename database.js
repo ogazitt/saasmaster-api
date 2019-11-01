@@ -11,24 +11,34 @@ const providers = {
 }
 
 // set the provider
-const provider = providers['firestore']
-//const provider = providers['memory']
+var provider = providers['firestore']
 
+// set the provider to use for persistence (default to firestore)
+exports.setProvider = (prov = 'firestore') => {
+  provider = providers[prov]
+}
+
+// set the environment (dev or prod)
+exports.setEnv = (env = 'prod') => {
+  // ensure there is a setEnv method before calling it
+  provider.setEnv && provider.setEnv(env)
+}
 
 // get user data by userid 
-exports.getUserData = async (userId) => {
-  return await provider.getUserData(userId)
+exports.getUserData = async (userId, connection = 'google') => {
+  return await provider.getUserData(userId, connection)
 }
 
 // store user data by userid
 exports.setUserData = async (
-    userId,            // userid to store data for
-    accessToken,       // access token
-    created,           // timestamp when token was created
-    expiresIn,         // expires in (seconds)
-    refreshToken) => { // refresh token (may be null)
+    userId,                // userid to store data for
+    connection = 'google', // which connection to use
+    accessToken,           // access token
+    created,               // timestamp when token was created
+    expiresIn,             // expires in (seconds)
+    refreshToken) => {     // refresh token (may be null)
 
-    return await provider.setUserData(userId, accessToken, created, expiresIn, refreshToken)
+    return await provider.setUserData(userId, connection, accessToken, created, expiresIn, refreshToken)
 }
 
 exports.tokenExpired = (user) => {

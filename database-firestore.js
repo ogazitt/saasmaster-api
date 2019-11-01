@@ -7,17 +7,26 @@ const db = new Firestore({
   keyFilename: './firestore_config.json',
 });
 
-const users = db.collection('users');
+var users = db.collection('users');
+
+// set the environment
+exports.setEnv = (env) => {
+  // the only impact for dev environment is to use a different collection
+  if (env === 'dev') {
+    users = db.collection('users-dev');
+  }
+};
 
 // get user data by userid 
-exports.getUserData = async (userId) => {
+exports.getUserData = async (userId, connection) => {
   try {
     const doc = await users.doc(userId).get();
     if (!doc.exists) {
       return null;
     }
     const data = doc.data();
-    return data;
+    const userData = data[connection];
+    return userData;
   } catch (error) {
     console.log(`getUserData: caught exception: ${error}`);
     return null;
@@ -27,6 +36,7 @@ exports.getUserData = async (userId) => {
 // store user data by userid
 exports.setUserData = async (
     userId,            // userid to store data for
+    connection,        // connection key
     accessToken,       // access token
     created,           // timestamp when token was created
     expiresIn,         // expires in (seconds)
@@ -37,21 +47,26 @@ exports.setUserData = async (
     const timestamp = new Date(created);
     timestamp.setSeconds(timestamp.getSeconds() + expiresIn);
 
-    // get the current user record and copy its fields
-    const user = await exports.getUserData(userId) || {};
-    user.accessToken = accessToken;
-    user.expiresAt = timestamp.getTime();
+    // get the current user record 
+    const doc = await users.doc(userId).get();
+    const user = doc.exists ? doc.data() : {};
+    const connectionData = user[connection] || {};
+    connectionData.accessToken = accessToken;
+    connectionData.expiresAt = timestamp.getTime();
 
     // also store / overwrite refresh token only if it was present
     if (refreshToken) {
-      user.refreshToken = refreshToken;
+      connectionData.refreshToken = refreshToken;
     }
+
+    // store the new connection data for this user
+    user[connection] = connectionData;
 
     // store the modified user
     const u = await users.doc(userId).set(user);
 
     // return the refreshed user hash
-    return user;
+    return connectionData;
   } catch (error) {
     console.log(`setUserData: caught exception: ${error}`);
     return null;

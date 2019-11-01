@@ -4,13 +4,22 @@ const jwt = require('express-jwt');
 const jwksRsa = require('jwks-rsa');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const axios = require('axios');
 const authConfig = require('./auth_config.json');
 const google = require('./google');
 const database = require('./database');
-
-// set dependencies 
 const jwtAuthz = require('express-jwt-authz');
+
+// get environment (dev or prod) based on environment variable
+const env = process.env.NODE_ENV || 'prod';
+console.log('environment:', env);
+
+// get persistence provider based on environment variable
+const provider = process.env.PROVIDER || 'firestore';
+console.log('provider:', provider);
+
+// set database persistence layer based on provider and environment
+database.setProvider(provider);
+database.setEnv(env);
 
 // create a new express app
 const app = express();
@@ -82,7 +91,7 @@ app.get('/connections', checkJwt, jwtAuthz(['read:timesheets']), function(req, r
   console.log(`/connections: user: ${userId}; email: ${email}`);
 
   const returnUserInfo = async () => {
-    const user = await database.getUserData(userId) || {};
+    const user = await database.getUserData(userId, 'google') || {};
     res.status(200).send(user);
   }
 
@@ -107,6 +116,8 @@ app.post('/timesheets', checkJwt, jwtAuthz(['create:timesheets']), function(req,
 app.get('/*', function(req, res) {
   res.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
+
+
 
 // Launch the API Server at PORT, or default port 8080
 const port = process.env.PORT || 8080;

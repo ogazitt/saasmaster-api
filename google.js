@@ -11,7 +11,7 @@ const authConfig = require('./auth_config.json');
 
 exports.getGoogleAccessToken = async (userId) => {
 
-  const user = await database.getUserData(userId);
+  const user = await database.getUserData(userId, 'google');
 
   // if an access token is already cached, and not expired, return it
   if (user && !database.tokenExpired(user)) {
@@ -165,6 +165,7 @@ const getGoogleTokenFromManagementAPI = async (userId, managementToken) => {
     // store / cache the access token 
     const thisUser = await database.setUserData(
       userId,
+      'google',
       accessToken,
       timestamp,
       expiresIn,
@@ -221,7 +222,7 @@ const getAccessTokenForGoogleRefreshToken = async(userId, refreshToken) => {
     }
 
     // store the new user data
-    database.setUserData(userId, accessToken, new Date(), data.expires_in, null);
+    database.setUserData(userId, 'google', accessToken, new Date(), data.expires_in, null);
 
     return accessToken;
   } catch (error) {
