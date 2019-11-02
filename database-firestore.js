@@ -25,8 +25,11 @@ exports.getUserData = async (userId, connection) => {
       return null;
     }
     const data = doc.data();
-    const userData = data[connection];
-    return userData;
+
+    // if a connection name was passed, return that data, otherwise the entire user struct
+    return connection ? 
+           data[connection] :
+           data;
   } catch (error) {
     console.log(`getUserData: caught exception: ${error}`);
     return null;

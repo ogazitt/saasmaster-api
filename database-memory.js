@@ -6,7 +6,10 @@ const users = {};
 // get user data by userid 
 exports.getUserData = async (userId, connection) => {
   const user = users[userId];
-  return user && user[connection];
+  // if a connection name was passed, return that data, otherwise the entire user struct
+  return connection ? 
+         user && user[connection] : 
+         user;
 };
 
 // store user data by userid

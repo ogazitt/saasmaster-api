@@ -25,7 +25,7 @@ exports.setEnv = (env = 'prod') => {
 }
 
 // get user data by userid 
-exports.getUserData = async (userId, connection = 'google') => {
+exports.getUserData = async (userId, connection) => {
   return await provider.getUserData(userId, connection)
 }
 

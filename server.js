@@ -91,7 +91,7 @@ app.get('/connections', checkJwt, jwtAuthz(['read:timesheets']), function(req, r
   console.log(`/connections: user: ${userId}; email: ${email}`);
 
   const returnUserInfo = async () => {
-    const user = await database.getUserData(userId, 'google') || {};
+    const user = await database.getUserData(userId) || {};
     res.status(200).send(user);
   }
 
