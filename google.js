@@ -8,6 +8,7 @@
 const axios = require('axios');
 const database = require('./database');
 const authConfig = require('./auth_config.json');
+const auth0 = require('./auth0');
 
 exports.getGoogleAccessToken = async (userId) => {
 
@@ -21,16 +22,17 @@ exports.getGoogleAccessToken = async (userId) => {
   // we don't have a token, or it's already expired; need to 
   // obtain a new one from the management API
   try {
-    const managementToken = await getManagementAPIAccessToken();
-    if (!managementToken) {
-      console.log('callAPI: getManagementAPIAccessToken failed');
+    const profile = await auth0.getAuth0Profile(userId);
+    if (!profile) {
+      console.log('getGoogleAccessToken: getAuth0Profile failed');
       return null;
     }
-    var token = await getGoogleTokenFromManagementAPI(userId, managementToken);
+    const token = await getGoogleTokenFromAuth0Profile(userId, profile);
     if (!token) {
-      console.log('callAPI: getGoogleTokenFromManagementAPI failed');
+      console.log('getGoogleAccessToken: getGoogleTokenFromAuth0Profile failed');
       return null;
     }
+
     // return the google access token
     return token;
   } catch (error) {
@@ -60,7 +62,8 @@ exports.getCalendarData = async (userId) => {
       {
         headers: headers
       });
-    // response received successfully
+
+      // response received successfully
     return response.data;
   } catch (error) {
     await error.response;
@@ -94,6 +97,7 @@ exports.getGoogleLocations = async (userId) => {
         headers: headers
       },
     );
+
     // response received successfully
     console.log(`getGoogleLocations data: ${response.data}`);
     return response.data;
@@ -104,49 +108,13 @@ exports.getGoogleLocations = async (userId) => {
   }
 };
 
-const getManagementAPIAccessToken = async () => {
+// extract google access token from auth0 profile information
+// this method will cache the access token, check for expiration, and refresh it if 
+// necessary
+//   userId is the Auth0 userid (key)
+//   user is the struct returned from Auth0 management API
+const getGoogleTokenFromAuth0Profile = async (userId, user) => {
   try {
-    const url = `https://${authConfig.domain}/oauth/token`;
-    const headers = { 'content-type': 'application/json' };
-    const body = { 
-      client_id: authConfig.client_id,
-      client_secret: authConfig.client_secret,
-      audience: `https://${authConfig.domain}/api/v2/`,
-      grant_type: 'client_credentials'
-    };
-
-    const response = await axios.post(
-      url,
-      body,
-      {
-        headers: headers
-      });
-    const data = response.data;
-    if (data && data.access_token) {
-      return data.access_token;
-    }
-    return null;
-  } catch (error) {
-    await error.response;
-    console.log(`getManagementAPIAccessToken: caught exception: ${error}`);
-    return null;
-  }
-};
-
-const getGoogleTokenFromManagementAPI = async (userId, managementToken) => {
-  try {
-    const url = encodeURI(`https://${authConfig.domain}/api/v2/users/${userId}`);
-    const headers = { 
-      'content-type': 'application/json',
-      'authorization': `Bearer ${managementToken}`
-    };
-
-    const response = await axios.get(
-      url,
-      {
-        headers: headers
-      });
-    const user = response.data;
     const userIdentity = user && user.identities && user.identities[0];
     if (!userIdentity) {
       return null;
@@ -190,11 +158,13 @@ const getGoogleTokenFromManagementAPI = async (userId, managementToken) => {
     return accessToken;
   } catch (error) {
     await error.response;
-    console.log(`getGoogleTokenFromManagementAPI: caught exception: ${error}`);
+    console.log(`getGoogleTokenFromAuth0Profile: caught exception: ${error}`);
     return null;
   }
 };
 
+// retrieve an access token from a refresh token, and cache the resulting 
+// access token for that userId
 const getAccessTokenForGoogleRefreshToken = async(userId, refreshToken) => {
   try {
     const url = 'https://www.googleapis.com/oauth2/v4/token';

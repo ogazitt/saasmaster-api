@@ -4,10 +4,12 @@ const jwt = require('express-jwt');
 const jwksRsa = require('jwks-rsa');
 const cors = require('cors');
 const bodyParser = require('body-parser');
+const jwtAuthz = require('express-jwt-authz');
+
 const authConfig = require('./auth_config.json');
+const auth0 = require('./auth0');
 const google = require('./google');
 const database = require('./database');
-const jwtAuthz = require('express-jwt-authz');
 
 // get environment (dev or prod) based on environment variable
 const env = process.env.NODE_ENV || 'prod';
@@ -96,6 +98,22 @@ app.get('/connections', checkJwt, jwtAuthz(['read:timesheets']), function(req, r
   }
 
   returnUserInfo();
+});
+
+// Get profile API endpoint
+//app.get('/profile', checkJwt, jwtAuthz(['read:timesheets']), function(req, res){
+app.get('/profile', checkJwt, function(req, res){
+  
+  const email = req.user[`${authConfig.audience}/email`];
+  const userId = req.user['sub'];
+  console.log(`/profile: user: ${userId}; email: ${email}`);
+
+  const returnProfile = async () => {
+    const profile = await auth0.getAuth0Profile(userId) || {};
+    res.status(200).send(profile);
+  }
+
+  returnProfile();
 });
 
 // Create timesheets API endpoint
