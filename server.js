@@ -54,19 +54,23 @@ app.use(bodyParser.urlencoded({
 // configure a static file server
 app.use(express.static(path.join(__dirname, 'build')));
 
-// Get timesheets API endpoint
+// Get timesheets API endpoint (old)
 app.get('/timesheets', checkJwt, jwtAuthz(['read:timesheets']), function(req, res){
-  
+  res.status(200).send({});
+});
+
+// Get google api data endpoint
+app.get('/google', checkJwt, function(req, res){
   const email = req.user[`${authConfig.audience}/email`];
   const userId = req.user['sub'];
-  console.log(`/timesheets: user: ${userId}; email: ${email}`);
+  console.log(`/google: user: ${userId}; email: ${email}`);
 
-  const callAPI = async () => {
+  const callGoogle = async () => {
     try {
       const data = await google.getCalendarData(userId);
       //const data = await google.getGoogleLocations(userId);
       if (!data) {
-        console.log('callAPI: no data returned');
+        console.log('callGoogle: no data returned');
         res.status(200).send({ message: 'no data returned'});
         return;
       }
@@ -76,17 +80,48 @@ app.get('/timesheets', checkJwt, jwtAuthz(['read:timesheets']), function(req, re
       return;
     } catch (error) {
       await error.response;
-      console.log(`callAPI: caught exception: ${error}`);
+      console.log(`callGoogle: caught exception: ${error}`);
       res.status(200).send({ message: error });
       return;
     }
   };
   
-  callAPI();
+  callGoogle();
+});
+
+// Get facebook api data endpoint
+app.get('/facebook', checkJwt, function(req, res){
+  const email = req.user[`${authConfig.audience}/email`];
+  const userId = req.user['sub'];
+  console.log(`/facebook: user: ${userId}; email: ${email}`);
+
+  const callFacebook = async () => {
+    try {
+      // BUGBUG - make a FB API call!
+      const data = await google.getCalendarData(userId);
+      if (!data) {
+        console.log('callFacebook: no data returned');
+        res.status(200).send({ message: 'no data returned'});
+        return;
+      }
+
+      // SUCCESS! send the data back to the client
+      res.status(200).send(data);
+      return;
+    } catch (error) {
+      await error.response;
+      console.log(`callFacebook: caught exception: ${error}`);
+      res.status(200).send({ message: error });
+      return;
+    }
+  };
+  
+  callFacebook();
 });
 
 // Get connections API endpoint
-app.get('/connections', checkJwt, jwtAuthz(['read:timesheets']), function(req, res){
+//app.get('/connections', checkJwt, jwtAuthz(['read:timesheets']), function(req, res){
+app.get('/connections', checkJwt, function(req, res){
   
   const email = req.user[`${authConfig.audience}/email`];
   const userId = req.user['sub'];
