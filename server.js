@@ -9,6 +9,7 @@ const jwtAuthz = require('express-jwt-authz');
 const authConfig = require('./auth_config.json');
 const auth0 = require('./auth0');
 const google = require('./google');
+const facebook = require('./facebook');
 const database = require('./database');
 
 // get environment (dev or prod) based on environment variable
@@ -98,7 +99,7 @@ app.get('/facebook', checkJwt, function(req, res){
   const callFacebook = async () => {
     try {
       // BUGBUG - make a FB API call!
-      const data = await google.getCalendarData(userId);
+      const data = await facebook.getPagesData(userId);
       if (!data) {
         console.log('callFacebook: no data returned');
         res.status(200).send({ message: 'no data returned'});
