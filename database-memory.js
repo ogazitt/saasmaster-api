@@ -22,17 +22,20 @@ exports.setUserData = async (
     refreshToken) => { // refresh token (may be null)
 
   try {
-    // compute the expiration timestamp
-    const timestamp = new Date(created);
-    timestamp.setSeconds(timestamp.getSeconds() + expiresIn);
-
     // store the access token in the users hash
     const user = users[userId] || {};
     const connectionData = user[connection] || {};
     connectionData.accessToken = accessToken;
-    connectionData.expiresAt = timestamp;
 
-    // also store / overwrite refresh token only if it was present
+    // store / overwrite expiration if passed in
+    if (created && expiresIn) {
+      // compute the expiration timestamp
+      const timestamp = new Date(created);
+      timestamp.setSeconds(timestamp.getSeconds() + expiresIn);
+      connectionData.expiresAt = timestamp.getTime();
+    }
+
+    // store / overwrite refresh token if passed in
     if (refreshToken) {
       connectionData.refreshToken = refreshToken;
     }

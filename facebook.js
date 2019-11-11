@@ -17,7 +17,7 @@ exports.getFacebookAccessToken = async (userId) => {
   const user = await database.getUserData(userId, 'facebook');
 
   // if an access token is already cached, and not expired, return it
-  if (user && !database.tokenExpired(user)) {
+  if (user && user.accessToken) {
     return user.accessToken;
   }
 
@@ -58,8 +58,7 @@ exports.getPagesData = async (userId) => {
     const url = `https://graph.facebook.com/${fb_userid}/accounts?access_token=${accessToken}`;
 
     const headers = { 
-      'content-type': 'application/json',
-      //'authorization': `Bearer ${accessToken}`
+      'content-type': 'application/json'
      };
 
     const response = await axios.get(
@@ -91,44 +90,26 @@ const getFacebookTokenFromAuth0Profile = async (userId, user) => {
     }
 
     var accessToken = userIdentity.access_token;
-    var refreshToken = userIdentity.refresh_token; // could be empty
-    const timestamp = user.updated_at;
-    const expiresIn = userIdentity.expires_in;
 
     // if no access token, no way to proceed
     if (!accessToken) {
       return null;
     }
 
-    // HACK: return the access token for now
-    return accessToken;
-
     // store / cache the access token 
     const thisUser = await database.setUserData(
       userId,
       'facebook',
       accessToken,
-      timestamp,
-      expiresIn,
-      refreshToken);
+      null,
+      null,
+      null);
 
-    // check for token expiration
-    if (database.tokenExpired(thisUser)) {
-      accessToken = null;
+    // BUGBUG: need to exchange for long-lived access token
+    const longLivedToken = await getLongLivedFacebookAccessToken(userId, accessToken);
 
-      // get a new access token using the refresh token
-      if (thisUser.refreshToken) {
-        accessToken = await getAccessTokenForFacebookRefreshToken(userId, thisUser.refreshToken);
-      } 
-    }
-
-    // if couldn't obtain a valid access token, return null
-    if (!accessToken) {
-      return null;
-    }
-
-    // return the (potentially refreshed) access token
-    return accessToken;
+    // return the long lived access token if not null, otherwise access token
+    return longLivedToken || accessToken;
   } catch (error) {
     await error.response;
     console.log(`getFacebookTokenFromAuth0Profile: caught exception: ${error}`);
@@ -136,41 +117,43 @@ const getFacebookTokenFromAuth0Profile = async (userId, user) => {
   }
 };
 
-// retrieve an access token from a refresh token, and cache the resulting 
+// retrieve a long-lived access token, and cache the resulting 
 // access token for that userId
-const getAccessTokenForFacebookRefreshToken = async(userId, refreshToken) => {
+const getLongLivedFacebookAccessToken = async(userId, accessToken) => {
+  // this call has not been debugged yet
+  // and it appears that the FB token is long-lived anyway
+  return null;
+
   try {
-    const url = 'https://www.googleapis.com/oauth2/v4/token';
+    const url = `https://graph.facebook.com/oauth/access_token?             
+client_id=${authConfig.fb_client_id}&
+client_secret=${authConfig.fb_client_secret}&
+grant_type=fb_exchange_token&
+fb_exchange_token=${accessToken}`;
+
     const headers = { 
       'content-type': 'application/json',
     };
-    const body = {
-      client_id: authConfig.google_client_id,
-      client_secret: authConfig.google_client_secret,
-      refresh_token: refreshToken,
-      grant_type: 'refresh_token'
-    }
 
-    const response = await axios.post(
+    const response = await axios.get(
       url,
-      body,
       {
         headers: headers
       },
     );
     const data = response.data;
-    const accessToken = data && data.access_token;
-    if (!accessToken) {
+    const longLivedToken = data && data.access_token;
+    if (!longLivedToken) {
       return null;
     }
 
     // store the new user data
-    database.setUserData(userId, 'facebook', accessToken, new Date(), data.expires_in, null);
+    database.setUserData(userId, 'facebook', longLivedToken, null, null, null);
 
-    return accessToken;
+    return longLivedToken;
   } catch (error) {
     await error.response;
-    console.log(`getAccessTokenForFacebookRefreshToken: caught exception: ${error}`);
+    console.log(`getLongLivedFacebookAccessToken: caught exception: ${error}`);
     return null;
   }
 };

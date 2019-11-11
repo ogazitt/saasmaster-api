@@ -46,18 +46,21 @@ exports.setUserData = async (
     refreshToken) => { // refresh token (may be null)
 
   try {
-    // compute the expiration timestamp
-    const timestamp = new Date(created);
-    timestamp.setSeconds(timestamp.getSeconds() + expiresIn);
-
     // get the current user record 
     const doc = await users.doc(userId).get();
     const user = doc.exists ? doc.data() : {};
     const connectionData = user[connection] || {};
     connectionData.accessToken = accessToken;
-    connectionData.expiresAt = timestamp.getTime();
 
-    // also store / overwrite refresh token only if it was present
+    // store / overwrite expiration if passed in
+    if (created && expiresIn) {
+      // compute the expiration timestamp
+      const timestamp = new Date(created);
+      timestamp.setSeconds(timestamp.getSeconds() + expiresIn);
+      connectionData.expiresAt = timestamp.getTime();
+    }
+    
+    // store / overwrite refresh token if passed in
     if (refreshToken) {
       connectionData.refreshToken = refreshToken;
     }
