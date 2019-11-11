@@ -3,6 +3,8 @@
 // exports:
 // getAuth0Profile(userId): abstracts all logic to retrieve Auth0 profile for a user
 // getManagementAPIAccessToken(): get Auth0 management API access token
+// linkAccounts(): link a primary and a secondary account
+// unlinkAccounts(): unlink a primary and a secondary account
 
 const axios = require('axios');
 const authConfig = require('./auth_config.json');
@@ -56,6 +58,79 @@ exports.getManagementAPIAccessToken = async () => {
   } catch (error) {
     await error.response;
     console.log(`getManagementAPIAccessToken: caught exception: ${error}`);
+    return null;
+  }
+};
+
+// link a primary and secondary account
+exports.linkAccounts = async (primaryUserId, secondaryUserId) => {
+  try {
+    const managementToken = await exports.getManagementAPIAccessToken();
+    if (!managementToken) {
+      console.log('linkAccounts: getManagementAPIAccessToken failed');
+      return null;
+    }
+
+    // get provider|userId out of compound userId passed in
+    [provider, userId] = secondaryUserId.split('|');
+
+    const url = `https://${authConfig.domain}/api/v2/users/${primaryUserId}/identities`;
+    const headers = { 
+      'content-type': 'application/json',
+      'authorization': `Bearer ${managementToken}`      
+    };
+    const body = { 
+      provider: provider,
+      user_id: userId
+    };
+
+    const response = await axios.post(
+      url,
+      body,
+      {
+        headers: headers
+      });
+    const data = response.data;
+    // BUGBUG: store new token array in storage
+    // add call in storage to consolidate keys
+    return data;
+  } catch (error) {
+    await error.response;
+    console.log(`linkAccounts: caught exception: ${error}`);
+    return null;
+  }
+};
+
+// unlink a primary and secondary account
+exports.unlinkAccounts = async (primaryUserId, secondaryUserId) => {
+  try {
+    const managementToken = await exports.getManagementAPIAccessToken();
+    if (!managementToken) {
+      console.log('linkAccounts: getManagementAPIAccessToken failed');
+      return null;
+    }
+
+    // get provider|userId out of compound userId passed in
+    [provider, userId] = secondaryUserId.split('|');
+
+    const url = `https://${authConfig.domain}/api/v2/users/${primaryUserId}/identities/${provider}/${userId}`;
+    const headers = { 
+      'content-type': 'application/json',
+      'authorization': `Bearer ${managementToken}`      
+    };
+
+    const response = await axios.delete(
+      url,
+      {
+        headers: headers
+      });
+    const data = response.data;
+    // BUGBUG: store new token array in storage
+    // add call in storage to consolidate keys
+    return data;
+  } catch (error) {
+    await error.response;
+    console.log(`linkAccounts: caught exception: ${error}`);
     return null;
   }
 };

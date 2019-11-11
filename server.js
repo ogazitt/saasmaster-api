@@ -152,6 +152,37 @@ app.get('/profile', checkJwt, function(req, res){
   returnProfile();
 });
 
+// Create profile API endpoint
+app.post('/link', checkJwt, function(req, res){
+
+  const userId = req.user['sub'];
+  var action = req.body && req.body.action;
+  var secondaryUserId = req.body && req.body.secondaryUserId;
+  console.log(`POST /link: ${action} ${userId}, ${secondaryUserId}`);
+
+  const link = async () => {
+    const data = await auth0.linkAccounts(userId, secondaryUserId);
+    res.status(200).send(data || { message: 'link failed' });
+  }
+
+  const unlink = async () => {
+    const data = await auth0.unlinkAccounts(userId, secondaryUserId);
+    res.status(200).send(data || { message: 'unlink failed' });
+  }
+
+  if (action === 'link' && userId && secondaryUserId) {
+    link();
+    return;
+  }
+
+  if (action === 'unlink' && userId && secondaryUserId) {
+    unlink();
+    return;
+  }
+
+  res.status(200).send({ message: 'Unknown action'});
+});
+
 // Create timesheets API endpoint
 app.post('/timesheets', checkJwt, jwtAuthz(['create:timesheets']), function(req, res){
   console.log('post api');
