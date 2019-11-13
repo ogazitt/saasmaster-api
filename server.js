@@ -159,11 +159,17 @@ app.get('/profile', checkJwt, function(req, res){
 });
 
 // Create profile API endpoint
+// body: 
+//  { 
+//    action: 'link' | 'unlink',
+//    primaryUserId <could be empty, in which case use req.user[sub]>
+//    secondaryUserId <in the format 'provider|userid'>
+//  }
 app.post('/link', checkJwt, function(req, res){
 
-  const userId = req.user['sub'];
-  var action = req.body && req.body.action;
-  var secondaryUserId = req.body && req.body.secondaryUserId;
+  const userId = req.body && req.body.primaryUserId || req.user['sub'];
+  const action = req.body && req.body.action;
+  const secondaryUserId = req.body && req.body.secondaryUserId;
   console.log(`POST /link: ${action} ${userId}, ${secondaryUserId}`);
 
   const link = async () => {

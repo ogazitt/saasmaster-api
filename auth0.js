@@ -8,6 +8,7 @@
 
 const axios = require('axios');
 const authConfig = require('./auth_config.json');
+const database = require('./database');
 
 // get a user's Auth0 profile from the management API
 exports.getAuth0Profile = async (userId) => {
@@ -91,8 +92,10 @@ exports.linkAccounts = async (primaryUserId, secondaryUserId) => {
         headers: headers
       });
     const data = response.data;
-    // BUGBUG: store new token array in storage
-    // add call in storage to consolidate keys
+
+    // add a provider section to the user data with the secondary userid
+    await database.setUserData(primaryUserId, provider, { userId: userId });
+
     return data;
   } catch (error) {
     await error.response;
@@ -125,12 +128,14 @@ exports.unlinkAccounts = async (primaryUserId, secondaryUserId) => {
         headers: headers
       });
     const data = response.data;
-    // BUGBUG: store new token array in storage
-    // add call in storage to consolidate keys
+
+    // remove the unlinked connection from the user store
+    await database.removeConnection(primaryUserId, provider);
+
     return data;
   } catch (error) {
     await error.response;
-    console.log(`linkAccounts: caught exception: ${error}`);
+    console.log(`unlinkAccounts: caught exception: ${error}`);
     return null;
   }
 };

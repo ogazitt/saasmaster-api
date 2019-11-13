@@ -12,7 +12,7 @@ const auth0 = require('./auth0');
 
 exports.getGoogleAccessToken = async (userId) => {
 
-  const user = await database.getUserData(userId, 'google');
+  const user = await database.getUserData(userId, 'google-oauth2');
 
   // if an access token is already cached, and not expired, return it
   if (user && !database.tokenExpired(user)) {
@@ -121,7 +121,7 @@ const getGoogleTokenFromAuth0Profile = async (userId, user) => {
     }
 
     var accessToken = userIdentity.access_token;
-    var refreshToken = userIdentity.refresh_token; // could be empty
+    const refreshToken = userIdentity.refresh_token; // could be empty
     const timestamp = user.updated_at;
     const expiresIn = userIdentity.expires_in;
 
@@ -131,7 +131,8 @@ const getGoogleTokenFromAuth0Profile = async (userId, user) => {
     }
 
     const userData = {
-      accessToken: accessToken
+      accessToken: accessToken,
+      userId: userIdentity.user_id
     };
 
     // store / overwrite expiration if passed in
@@ -150,7 +151,7 @@ const getGoogleTokenFromAuth0Profile = async (userId, user) => {
     // store / cache the access token 
     const thisUser = await database.setUserData(
       userId,
-      'google',
+      'google-oauth2',
       userData);
 
     // check for token expiration
@@ -217,7 +218,7 @@ const getAccessTokenForGoogleRefreshToken = async(userId, refreshToken) => {
     // store / cache the user data 
     const thisUser = await database.setUserData(
       userId,
-      'google',
+      'google-oauth2',
       userData);
 
     return accessToken;

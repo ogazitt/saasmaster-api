@@ -35,6 +35,30 @@ exports.setUserData = async (
   }
 }
 
+// remove a connection from a userid
+exports.removeConnection = async (
+  userId,            // userid to store data for
+  connection) => {   // connection key
+  try {
+    // get the current user record 
+    const user = users[userId];
+    if (!user) {
+      // nothing to do for an empty user record
+      return null;
+    }
+
+    // remove this connection data for this user
+    user[connection] = undefined;
+
+    // return the refreshed user hash
+    return user;
+  } catch (error) {
+    console.log(`removeConnection: caught exception: ${error}`);
+    return null;
+  }
+}
+
+// calculate whether an token has expired based on this provider
 exports.tokenExpired = (user) => {
   try {
     const timestamp = user.expiresAt;
