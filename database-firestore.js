@@ -38,41 +38,24 @@ exports.getUserData = async (userId, connection) => {
 
 // store user data by userid
 exports.setUserData = async (
-    userId,            // userid to store data for
-    connection,        // connection key
-    accessToken,       // access token
-    created,           // timestamp when token was created
-    expiresIn,         // expires in (seconds)
-    refreshToken) => { // refresh token (may be null)
-
+  userId,            // userid to store data for
+  connection,        // connection key
+  data) => {         // data to store
   try {
     // get the current user record 
     const doc = await users.doc(userId).get();
     const user = doc.exists ? doc.data() : {};
     const connectionData = user[connection] || {};
-    connectionData.accessToken = accessToken;
-
-    // store / overwrite expiration if passed in
-    if (created && expiresIn) {
-      // compute the expiration timestamp
-      const timestamp = new Date(created);
-      timestamp.setSeconds(timestamp.getSeconds() + expiresIn);
-      connectionData.expiresAt = timestamp.getTime();
-    }
-    
-    // store / overwrite refresh token if passed in
-    if (refreshToken) {
-      connectionData.refreshToken = refreshToken;
-    }
+    const mergedData = {...connectionData, ...data };
 
     // store the new connection data for this user
-    user[connection] = connectionData;
+    user[connection] = mergedData;
 
     // store the modified user
     const u = await users.doc(userId).set(user);
 
     // return the refreshed user hash
-    return connectionData;
+    return mergedData;
   } catch (error) {
     console.log(`setUserData: caught exception: ${error}`);
     return null;

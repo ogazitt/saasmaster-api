@@ -1,4 +1,13 @@
 // some generic database get/set functions for various entities
+// 
+// setup:
+//   setProvider: sets the provider
+//   setEnv: set enviroment (dev / prod)
+// wrapper methods:
+//   getUserData: get user info from provider
+//   setUserData: set user info in provider
+//   tokenExpired: check whether access token expired
+//   connections: return user connections
 
 // import providers
 const firestore = require('./database-firestore')
@@ -33,14 +42,41 @@ exports.getUserData = async (userId, connection) => {
 exports.setUserData = async (
     userId,                // userid to store data for
     connection = 'google', // which connection to use
-    accessToken,           // access token
-    created,               // timestamp when token was created
-    expiresIn,             // expires in (seconds)
-    refreshToken) => {     // refresh token (may be null)
-
-    return await provider.setUserData(userId, connection, accessToken, created, expiresIn, refreshToken)
+    data) => {              // data to store
+    return await provider.setUserData(userId, connection, data)
 }
 
 exports.tokenExpired = (user) => {
   return provider.tokenExpired(user);
+}
+
+exports.connections = async (userId) => {
+  const connectionList = {
+    google: {
+      image: 'google-logo.png'
+    },
+    facebook: {
+      image: 'facebook-logo.png'
+    },
+    instagram: {
+      image: 'instagram-logo.png'
+    }
+  };
+
+  try {
+    const user = await exports.getUserData(userId) || {};
+    const connections = Object.keys(connectionList).map((key) => {
+      const connected = user[key] ? true : false;
+      return ({ 
+        key: key, 
+        connected: connected,
+        image: connectionList[key].image
+      })
+    });
+
+    return connections;
+  } catch (error) {
+    console.log(`connections: caught exception: ${error}`);
+    return {}
+  }
 }

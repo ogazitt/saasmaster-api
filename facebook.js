@@ -1,7 +1,7 @@
 // facebook utility functions
 
 // exports:
-// getFacebookAccessToken(userId): abstracts all logic to retrieve a FB access token
+// getFacebookAccessInfo(userId): abstracts all logic to retrieve a FB access token / userid
 // getCalendarData(userId): get calendar data for the userId
 // getGoogleLocations(userId): get google mybusiness location data
 
@@ -12,13 +12,13 @@ const database = require('./database');
 const authConfig = require('./auth_config.json');
 const auth0 = require('./auth0');
 
-exports.getFacebookAccessToken = async (userId) => {
+exports.getFacebookAccessInfo = async (userId) => {
 
   const user = await database.getUserData(userId, 'facebook');
 
   // if an access token is already cached, and not expired, return it
-  if (user && user.accessToken) {
-    return user.accessToken;
+  if (user && user.accessToken && user.userId) {
+    return user;
   }
 
   // we don't have a token, or it's already expired; need to 
@@ -26,12 +26,12 @@ exports.getFacebookAccessToken = async (userId) => {
   try {
     const profile = await auth0.getAuth0Profile(userId);
     if (!profile) {
-      console.log('getFacebookAccessToken: getAuth0Profile failed');
+      console.log('getFacebookAccessInfo: getAuth0Profile failed');
       return null;
     }
-    const token = await getFacebookTokenFromAuth0Profile(userId, profile);
+    const token = await getFacebookInfoFromAuth0Profile(userId, profile);
     if (!token) {
-      console.log('getFacebookAccessToken: getFacebookTokenFromAuth0Profile failed');
+      console.log('getFacebookAccessInfo: getFacebookInfoFromAuth0Profile failed');
       return null;
     }
 
@@ -39,18 +39,18 @@ exports.getFacebookAccessToken = async (userId) => {
     return token;
   } catch (error) {
     await error.response;
-    console.log(`getFacebookAccessToken: caught exception: ${error}`);
+    console.log(`getFacebookAccessInfo: caught exception: ${error}`);
     return null;
   }
 };
 
 exports.getPagesData = async (userId) => {
   try {
-    // get userid from the auth0 userid format (provider|userid)
-    const fb_userid = userId.split('|')[1];// '10157590277899002'; // HACK: hardcode for now
-    
-    const accessToken = await exports.getFacebookAccessToken(userId);
-    if (!accessToken) {
+    const user = await exports.getFacebookAccessInfo(userId);
+    const fb_userid = user && user.userId;
+    const accessToken = user && user.accessToken;
+
+    if (!accessToken || !fb_userid) {
       console.log('getPagesData: getFacebookAccessToken failed');
       return null;
     }
@@ -81,7 +81,7 @@ exports.getPagesData = async (userId) => {
 // necessary
 //   userId is the Auth0 userid (key)
 //   user is the struct returned from Auth0 management API
-const getFacebookTokenFromAuth0Profile = async (userId, user) => {
+const getFacebookInfoFromAuth0Profile = async (userId, user) => {
   try {
     const userIdentity = user && user.identities && 
                          user.identities.find(i => i.provider === 'facebook');
@@ -100,10 +100,13 @@ const getFacebookTokenFromAuth0Profile = async (userId, user) => {
     const thisUser = await database.setUserData(
       userId,
       'facebook',
-      accessToken,
-      null,
-      null,
-      null);
+      { 
+        accessToken: accessToken,
+        userId: userIdentity.user_id
+      });
+
+    // HACK: return the current user info without obtaining long-lived token
+    return thisUser;
 
     // BUGBUG: need to exchange for long-lived access token
     const longLivedToken = await getLongLivedFacebookAccessToken(userId, accessToken);
@@ -148,7 +151,12 @@ fb_exchange_token=${accessToken}`;
     }
 
     // store the new user data
-    database.setUserData(userId, 'facebook', longLivedToken, null, null, null);
+    database.setUserData(
+      userId,
+      'facebook',
+      { 
+        accessToken: longLivedToken
+      });
 
     return longLivedToken;
   } catch (error) {

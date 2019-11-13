@@ -133,7 +133,13 @@ app.get('/connections', checkJwt, function(req, res){
     res.status(200).send(user);
   }
 
-  returnUserInfo();
+  const returnConnections = async () => {
+    const conns = await database.connections(userId) || {};
+    res.status(200).send(conns);
+  }
+
+  //returnUserInfo();
+  returnConnections();
 });
 
 // Get profile API endpoint

@@ -130,14 +130,28 @@ const getGoogleTokenFromAuth0Profile = async (userId, user) => {
       return null;
     }
 
+    const userData = {
+      accessToken: accessToken
+    };
+
+    // store / overwrite expiration if passed in
+    if (timestamp && expiresIn) {
+      // compute the expiration timestamp
+      const ts = new Date(timestamp);
+      ts.setSeconds(ts.getSeconds() + expiresIn);
+      userData.expiresAt = ts.getTime();
+    }
+    
+    // store / overwrite refresh token if passed in
+    if (refreshToken) {
+      userData.refreshToken = refreshToken;
+    }
+    
     // store / cache the access token 
     const thisUser = await database.setUserData(
       userId,
       'google',
-      accessToken,
-      timestamp,
-      expiresIn,
-      refreshToken);
+      userData);
 
     // check for token expiration
     if (database.tokenExpired(thisUser)) {
@@ -191,8 +205,20 @@ const getAccessTokenForGoogleRefreshToken = async(userId, refreshToken) => {
       return null;
     }
 
-    // store the new user data
-    database.setUserData(userId, 'google', accessToken, new Date(), data.expires_in, null);
+    const userData = {
+      accessToken: accessToken
+    };
+
+    // compute the expiration timestamp
+    const ts = new Date();
+    ts.setSeconds(ts.getSeconds() + data.expires_in);
+    userData.expiresAt = ts.getTime();
+        
+    // store / cache the user data 
+    const thisUser = await database.setUserData(
+      userId,
+      'google',
+      userData);
 
     return accessToken;
   } catch (error) {
