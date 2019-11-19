@@ -115,7 +115,8 @@ exports.getGoogleLocations = async (userId) => {
 //   user is the struct returned from Auth0 management API
 const getGoogleTokenFromAuth0Profile = async (userId, user) => {
   try {
-    const userIdentity = user && user.identities && user.identities[0];
+    const userIdentity = user && user.identities && 
+                         user.identities.find(i => i.provider === 'google-oauth2');
     if (!userIdentity) {
       return null;
     }

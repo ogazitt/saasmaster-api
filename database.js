@@ -68,6 +68,9 @@ exports.connections = async (userId) => {
     },
     instagram: {
       image: 'instagram-logo.png'
+    },
+    twitter: {
+      image: 'twitter-logo.png'
     }
   };
 

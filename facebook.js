@@ -16,27 +16,26 @@ exports.getFacebookAccessInfo = async (userId) => {
 
   const user = await database.getUserData(userId, 'facebook');
 
-  // if an access token is already cached, and not expired, return it
+  // if an access token and userid are already cached, return the user info
   if (user && user.accessToken && user.userId) {
     return user;
   }
 
-  // we don't have a token, or it's already expired; need to 
-  // obtain a new one from the management API
+  // we don't have a token; need to obtain a new one from the management API
   try {
     const profile = await auth0.getAuth0Profile(userId);
     if (!profile) {
       console.log('getFacebookAccessInfo: getAuth0Profile failed');
       return null;
     }
-    const token = await getFacebookInfoFromAuth0Profile(userId, profile);
-    if (!token) {
+    const info = await getFacebookInfoFromAuth0Profile(userId, profile);
+    if (!info) {
       console.log('getFacebookAccessInfo: getFacebookInfoFromAuth0Profile failed');
       return null;
     }
 
-    // return the google access token
-    return token;
+    // return the facebook access info
+    return info;
   } catch (error) {
     await error.response;
     console.log(`getFacebookAccessInfo: caught exception: ${error}`);
@@ -97,7 +96,7 @@ const getFacebookInfoFromAuth0Profile = async (userId, user) => {
     }
 
     // store / cache the access token 
-    const thisUser = await database.setUserData(
+    const mergedUserData = await database.setUserData(
       userId,
       'facebook',
       { 
@@ -106,7 +105,7 @@ const getFacebookInfoFromAuth0Profile = async (userId, user) => {
       });
 
     // HACK: return the current user info without obtaining long-lived token
-    return thisUser;
+    return mergedUserData;
 
     // BUGBUG: need to exchange for long-lived access token
     const longLivedToken = await getLongLivedFacebookAccessToken(userId, accessToken);

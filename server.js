@@ -8,8 +8,13 @@ const jwtAuthz = require('express-jwt-authz');
 
 const authConfig = require('./auth_config.json');
 const auth0 = require('./auth0');
+
+// import providers
 const google = require('./google');
 const facebook = require('./facebook');
+const twitter = require('./twitter');
+
+// import database layer
 const database = require('./database');
 
 // get environment (dev or prod) based on environment variable
@@ -60,34 +65,37 @@ app.get('/timesheets', checkJwt, jwtAuthz(['read:timesheets']), function(req, re
   res.status(200).send({});
 });
 
+// async function to invoke a data provider function and return the result
+//   res: response object
+//   func: data provider function to invoke 
+//   userId: user id to pass into the data provider function
+const callDataProvider = async (res, func, userId) => {
+  try {
+    const data = await func(userId);
+    if (!data) {
+      console.log('callDataProvider: no data returned');
+      res.status(200).send({ message: 'no data returned'});
+      return;
+    }
+
+    // SUCCESS! send the data back to the client
+    res.status(200).send(data);
+    return;
+  } catch (error) {
+    await error.response;
+    console.log(`callDataProvider: caught exception: ${error}`);
+    res.status(200).send({ message: error });
+    return;
+  }
+};
+
 // Get google api data endpoint
 app.get('/google', checkJwt, function(req, res){
   const email = req.user[`${authConfig.audience}/email`];
   const userId = req.user['sub'];
   console.log(`/google: user: ${userId}; email: ${email}`);
-
-  const callGoogle = async () => {
-    try {
-      const data = await google.getCalendarData(userId);
-      //const data = await google.getGoogleLocations(userId);
-      if (!data) {
-        console.log('callGoogle: no data returned');
-        res.status(200).send({ message: 'no data returned'});
-        return;
-      }
-
-      // SUCCESS! send the data back to the client
-      res.status(200).send(data);
-      return;
-    } catch (error) {
-      await error.response;
-      console.log(`callGoogle: caught exception: ${error}`);
-      res.status(200).send({ message: error });
-      return;
-    }
-  };
   
-  callGoogle();
+  callDataProvider(res, google.getCalendarData, userId);
 });
 
 // Get facebook api data endpoint
@@ -96,28 +104,16 @@ app.get('/facebook', checkJwt, function(req, res){
   const userId = req.user['sub'];
   console.log(`/facebook: user: ${userId}; email: ${email}`);
 
-  const callFacebook = async () => {
-    try {
-      // BUGBUG - make a FB API call!
-      const data = await facebook.getPagesData(userId);
-      if (!data) {
-        console.log('callFacebook: no data returned');
-        res.status(200).send({ message: 'no data returned'});
-        return;
-      }
+  callDataProvider(res, facebook.getPagesData, userId);
+});
 
-      // SUCCESS! send the data back to the client
-      res.status(200).send(data);
-      return;
-    } catch (error) {
-      await error.response;
-      console.log(`callFacebook: caught exception: ${error}`);
-      res.status(200).send({ message: error });
-      return;
-    }
-  };
-  
-  callFacebook();
+// Get twitter api data endpoint
+app.get('/twitter', checkJwt, function(req, res){
+  const email = req.user[`${authConfig.audience}/email`];
+  const userId = req.user['sub'];
+  console.log(`/twitter: user: ${userId}; email: ${email}`);
+
+  callDataProvider(res, twitter.getTweets, userId);
 });
 
 // Get connections API endpoint
@@ -158,7 +154,7 @@ app.get('/profile', checkJwt, function(req, res){
   returnProfile();
 });
 
-// Create profile API endpoint
+// Link API endpoint
 // body: 
 //  { 
 //    action: 'link' | 'unlink',
@@ -213,7 +209,6 @@ app.post('/timesheets', checkJwt, jwtAuthz(['create:timesheets']), function(req,
 app.get('/*', function(req, res) {
   res.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
-
 
 
 // Launch the API Server at PORT, or default port 8080
