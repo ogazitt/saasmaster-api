@@ -69,9 +69,9 @@ app.get('/timesheets', checkJwt, jwtAuthz(['read:timesheets']), function(req, re
 //   res: response object
 //   func: data provider function to invoke 
 //   userId: user id to pass into the data provider function
-const callDataProvider = async (res, func, userId) => {
+const callDataProvider = async (res, func, ...params) => {
   try {
-    const data = await func(userId);
+    const data = await func(params);
     if (!data) {
       console.log('callDataProvider: no data returned');
       res.status(200).send({ message: 'no data returned'});
@@ -104,7 +104,18 @@ app.get('/facebook', checkJwt, function(req, res){
   const userId = req.user['sub'];
   console.log(`/facebook: user: ${userId}; email: ${email}`);
 
-  callDataProvider(res, facebook.getPagesData, userId);
+  callDataProvider(res, facebook.getPages, userId);
+});
+
+// Get facebook api data endpoint
+app.get('/facebook/reviews/:pageId', checkJwt, function(req, res){
+  const email = req.user[`${authConfig.audience}/email`];
+  const userId = req.user['sub'];
+  const pageId = req.params.pageId;
+  const accessToken = req.headers.token;
+  console.log(`/facebook/reviews/${pageId}: user: ${userId}; email: ${email}`);
+
+  callDataProvider(res, facebook.getPageReviews, pageId, accessToken);
 });
 
 // Get twitter api data endpoint

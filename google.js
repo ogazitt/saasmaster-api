@@ -42,7 +42,7 @@ exports.getGoogleAccessToken = async (userId) => {
   }
 };
 
-exports.getCalendarData = async (userId) => {
+exports.getCalendarData = async ([userId]) => {
   try {
     const accessToken = await exports.getGoogleAccessToken(userId);
     if (!accessToken) {
@@ -72,7 +72,7 @@ exports.getCalendarData = async (userId) => {
   }
 };
 
-exports.getGoogleLocations = async (userId) => {
+exports.getGoogleLocations = async ([userId]) => {
   try {
     const accessToken = await exports.getGoogleAccessToken(userId);
     if (!accessToken) {

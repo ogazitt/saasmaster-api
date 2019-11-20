@@ -45,7 +45,7 @@ exports.getTwitterAccessInfo = async (userId) => {
   }
 };
 
-exports.getTweets = async (userId) => {
+exports.getTweets = async ([userId]) => {
   try {
     const user = await exports.getTwitterAccessInfo(userId);
     if (!user) {

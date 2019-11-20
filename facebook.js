@@ -2,10 +2,10 @@
 
 // exports:
 // getFacebookAccessInfo(userId): abstracts all logic to retrieve a FB access token / userid
-// getCalendarData(userId): get calendar data for the userId
-// getGoogleLocations(userId): get google mybusiness location data
+// getPages(userId): get pages that the userid has access to
+// getPageReviews(pageId, accessToken): get page reviews
 
-const bizSdk = require('facebook-nodejs-business-sdk');
+//const bizSdk = require('facebook-nodejs-business-sdk');
 
 const axios = require('axios');
 const database = require('./database');
@@ -43,7 +43,7 @@ exports.getFacebookAccessInfo = async (userId) => {
   }
 };
 
-exports.getPagesData = async (userId) => {
+exports.getPages = async ([userId]) => {
   try {
     const user = await exports.getFacebookAccessInfo(userId);
     const fb_userid = user && user.userId;
@@ -55,7 +55,28 @@ exports.getPagesData = async (userId) => {
     }
 
     const url = `https://graph.facebook.com/${fb_userid}/accounts?access_token=${accessToken}`;
+    const headers = { 
+      'content-type': 'application/json'
+     };
 
+    const response = await axios.get(
+      url,
+      {
+        headers: headers
+      });
+
+      // response received successfully
+    return response.data;
+  } catch (error) {
+    await error.response;
+    console.log(`getPagesData: caught exception: ${error}`);
+    return null;
+  }
+};
+
+exports.getPageReviews = async ([pageId, accessToken]) => {
+  try {
+    const url = `https://graph.facebook.com/v5.0/${pageId}/ratings?access_token=${accessToken}`;
     const headers = { 
       'content-type': 'application/json'
      };
