@@ -10,6 +10,16 @@ const authConfig = require('./auth_config.json');
 const auth0 = require('./auth0');
 const oauthSignature = require('oauth-signature');
 
+// api's defined by this provider
+exports.apis = {
+  getTweets: {
+    provider: 'twitter',
+    func: null,
+    arrayKey: null,
+    itemKey: 'id_str'
+  },
+};
+
 // could never get the Twitter client to work :(
 // const Twitter = require('twitter');
 
@@ -45,7 +55,7 @@ exports.getTwitterAccessInfo = async (userId) => {
   }
 };
 
-exports.getTweets = async ([userId]) => {
+exports.apis.getTweets.func = async ([userId]) => {
   try {
     const user = await exports.getTwitterAccessInfo(userId);
     if (!user) {

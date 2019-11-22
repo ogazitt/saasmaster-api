@@ -34,6 +34,21 @@ exports.setEnv = (env = 'prod') => {
   provider.setEnv && provider.setEnv(env)
 }
 
+// store a document
+exports.storeDocument = async (userId, collection, name, data) => {
+  return await provider.storeDocument(userId, collection, name, data);
+}
+
+// store a batch of documents passed in as data, using key as a name
+exports.storeBatch = async (userId, collection, data, key) => {
+  return await provider.storeBatch(userId, collection, data, key);
+}
+
+// query for documents
+exports.query = async (userId, collection, field = null, value = null) => {
+  return await provider.query(userId, collection, field, value);
+}
+
 // get user data by userid 
 exports.getUserData = async (userId, connection) => {
   return await provider.getUserData(userId, connection)

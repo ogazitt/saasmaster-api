@@ -12,6 +12,22 @@ const database = require('./database');
 const authConfig = require('./auth_config.json');
 const auth0 = require('./auth0');
 
+// api's defined by this provider
+exports.apis = {
+  getPages: {
+    provider: 'facebook',
+    func: null,
+    arrayKey: 'data',
+    itemKey: 'id'
+  },
+  getPageReviews: {
+    provider: 'facebook',
+    func: null,
+    arrayKey: 'data',
+    itemKey: 'created_time'
+  },
+};
+
 exports.getFacebookAccessInfo = async (userId) => {
 
   const user = await database.getUserData(userId, 'facebook');
@@ -43,7 +59,7 @@ exports.getFacebookAccessInfo = async (userId) => {
   }
 };
 
-exports.getPages = async ([userId]) => {
+exports.apis.getPages.func = async ([userId]) => {
   try {
     const user = await exports.getFacebookAccessInfo(userId);
     const fb_userid = user && user.userId;
@@ -74,7 +90,7 @@ exports.getPages = async ([userId]) => {
   }
 };
 
-exports.getPageReviews = async ([pageId, accessToken]) => {
+exports.apis.getPageReviews.func = async ([pageId, accessToken]) => {
   try {
     const url = `https://graph.facebook.com/v5.0/${pageId}/ratings?access_token=${accessToken}`;
     const headers = { 

@@ -10,6 +10,21 @@ const database = require('./database');
 const authConfig = require('./auth_config.json');
 const auth0 = require('./auth0');
 
+// api's defined by this provider
+// the actual function is added after it is defined below
+exports.apis = {
+  getCalendarData: {
+    provider: 'google-oauth2',
+    func: null,
+    arrayKey: 'items',
+    itemKey: 'id'
+  },
+  getGoogleLocations: {
+    provider: 'google-oauth2',
+    func: null,
+  },
+};
+
 exports.getGoogleAccessToken = async (userId) => {
 
   const user = await database.getUserData(userId, 'google-oauth2');
@@ -42,7 +57,7 @@ exports.getGoogleAccessToken = async (userId) => {
   }
 };
 
-exports.getCalendarData = async ([userId]) => {
+exports.apis.getCalendarData.func = async ([userId]) => {
   try {
     const accessToken = await exports.getGoogleAccessToken(userId);
     if (!accessToken) {
@@ -72,7 +87,7 @@ exports.getCalendarData = async ([userId]) => {
   }
 };
 
-exports.getGoogleLocations = async ([userId]) => {
+exports.apis.getGoogleLocations.func = async ([userId]) => {
   try {
     const accessToken = await exports.getGoogleAccessToken(userId);
     if (!accessToken) {

@@ -14,8 +14,9 @@ const google = require('./google');
 const facebook = require('./facebook');
 const twitter = require('./twitter');
 
-// import database layer
+// import database and storage layers
 const database = require('./database');
+const storage = require('./storage');
 
 // get environment (dev or prod) based on environment variable
 const env = process.env.NODE_ENV || 'prod';
@@ -68,10 +69,17 @@ app.get('/timesheets', checkJwt, jwtAuthz(['read:timesheets']), function(req, re
 // async function to invoke a data provider function and return the result
 //   res: response object
 //   func: data provider function to invoke 
-//   userId: user id to pass into the data provider function
-const callDataProvider = async (res, func, ...params) => {
+//   params: extra parameters to pass into the data provider function
+const callDataProvider = async (
+  res,          // response object
+  userId,       // userId for this request
+  provider,     // provider object
+  entity,       // entity to retrieve
+  forceRefresh, // flag for whether to force refresh
+  ...params) => {
   try {
-    const data = await func(params);
+    //const data = await func(params);
+    const data = await storage.getData(userId, provider, entity, forceRefresh, params);
     if (!data) {
       console.log('callDataProvider: no data returned');
       res.status(200).send({ message: 'no data returned'});
@@ -93,18 +101,21 @@ const callDataProvider = async (res, func, ...params) => {
 app.get('/google', checkJwt, function(req, res){
   const email = req.user[`${authConfig.audience}/email`];
   const userId = req.user['sub'];
+  const refresh = req.query.refresh || false;
+
   console.log(`/google: user: ${userId}; email: ${email}`);
   
-  callDataProvider(res, google.getCalendarData, userId);
+  callDataProvider(res, userId, google.apis.getCalendarData, 'calendars', refresh, userId);
 });
 
 // Get facebook api data endpoint
 app.get('/facebook', checkJwt, function(req, res){
   const email = req.user[`${authConfig.audience}/email`];
   const userId = req.user['sub'];
+  const refresh = req.query.refresh || false;
   console.log(`/facebook: user: ${userId}; email: ${email}`);
 
-  callDataProvider(res, facebook.getPages, userId);
+  callDataProvider(res, userId, facebook.apis.getPages, 'pages', refresh, userId);
 });
 
 // Get facebook api data endpoint
@@ -112,19 +123,21 @@ app.get('/facebook/reviews/:pageId', checkJwt, function(req, res){
   const email = req.user[`${authConfig.audience}/email`];
   const userId = req.user['sub'];
   const pageId = req.params.pageId;
+  const refresh = req.query.refresh || false;
   const accessToken = req.headers.token;
   console.log(`/facebook/reviews/${pageId}: user: ${userId}; email: ${email}`);
 
-  callDataProvider(res, facebook.getPageReviews, pageId, accessToken);
+  callDataProvider(res, userId, facebook.apis.getPageReviews, pageId, refresh, pageId, accessToken);
 });
 
 // Get twitter api data endpoint
 app.get('/twitter', checkJwt, function(req, res){
   const email = req.user[`${authConfig.audience}/email`];
   const userId = req.user['sub'];
+  const refresh = req.query.refresh || false;
   console.log(`/twitter: user: ${userId}; email: ${email}`);
 
-  callDataProvider(res, twitter.getTweets, userId);
+  callDataProvider(res, userId, twitter.apis.getTweets, 'mentions', refresh, userId);
 });
 
 // Get connections API endpoint

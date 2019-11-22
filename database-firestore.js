@@ -17,6 +17,54 @@ exports.setEnv = (env) => {
   }
 };
 
+// store a document
+exports.storeDocument = async (userId, collection, name, data) => {
+  try {
+    const doc = users.doc(userId).collection(collection).doc(name);
+    await doc.set(data);
+  } catch (error) {
+    console.log(`storeDocument: caught exception: ${error}`);
+    return null;
+  }  
+}
+
+// store a batch of documents passed in as data, using key as a name
+exports.storeBatch = async (userId, collection, data, key) => {
+  try {    
+    const coll = users.doc(userId).collection(collection);
+    data.forEach(element => {
+      const name = element[key];
+      const doc = coll.doc(name);
+      doc.set(element);
+    });
+  } catch (error) {
+    console.log(`storeBatch: caught exception: ${error}`);
+    return null;
+  }  
+}
+
+// query for documents
+exports.query = async (userId, collection, field, value) => {
+  try {
+    const col = users.doc(userId).collection(collection);
+    let snapshot;
+    if (field && value) {
+      // a query was passed in, so query the collection
+      const query = col.where(field, '==', value);
+      snapshot = await query.get();
+    } else {
+      // query was not passed in, so return all data in the collection
+      snapshot = await col.get();
+    }
+
+    // return an array with all the data from the documents
+    return snapshot.docs.map(doc => doc.data());
+  } catch (error) {
+    console.log(`query: caught exception: ${error}`);
+    return null;
+  }  
+}
+
 // get user data by userid 
 exports.getUserData = async (userId, connection) => {
   try {
