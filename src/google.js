@@ -7,7 +7,7 @@
 
 const axios = require('axios');
 const database = require('./database');
-const authConfig = require('./auth_config.json');
+const authConfig = require('../config/auth_config.json');
 const auth0 = require('./auth0');
 
 // api's defined by this provider

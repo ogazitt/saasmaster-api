@@ -6,7 +6,7 @@
 
 const axios = require('axios');
 const database = require('./database');
-const authConfig = require('./auth_config.json');
+const authConfig = require('../config/auth_config.json');
 const auth0 = require('./auth0');
 const oauthSignature = require('oauth-signature');
 
@@ -107,6 +107,14 @@ exports.apis.getTweets.func = async ([userId]) => {
       {
         headers: headers
       });
+
+    // do some processing on the results, to remove arrays within arrays
+    // the latter breaks the firestore data model
+    response.data.forEach(element => {
+      if (element.place && element.place.bounding_box) {
+        element.place.bounding_box = null;
+      }
+    });
 
     // response received successfully
     return response.data;

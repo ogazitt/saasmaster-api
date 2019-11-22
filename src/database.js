@@ -4,6 +4,9 @@
 //   setProvider: sets the provider
 //   setEnv: set enviroment (dev / prod)
 // wrapper methods:
+//   storeDocument: store a document into a collection
+//   storeBatch: shred an array into a batch of documents in a collection
+//   query: query for documents across a collection, consolidate into an array 
 //   getUserData: get user info from provider
 //   setUserData: set user info in provider
 //   removeConnection: remove connection for user in provider
@@ -44,7 +47,8 @@ exports.storeBatch = async (userId, collection, data, key) => {
   return await provider.storeBatch(userId, collection, data, key);
 }
 
-// query for documents
+// query for documents in a collection optionally based on a field value
+// return the results as an array of objects
 exports.query = async (userId, collection, field = null, value = null) => {
   return await provider.query(userId, collection, field, value);
 }

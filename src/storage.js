@@ -59,7 +59,7 @@ exports.getData = async (userId, provider, entity, forceRefresh, ...params) => {
 
     // store the data in the database
     // do not wait for the operation to finish
-    database.storeBatch(userId, collectionName, array, provider.itemKey);
+    await database.storeBatch(userId, collectionName, array, provider.itemKey);
 
     // update the last access time
     await exports.setLastAccessTime(userId, providerName, entity);

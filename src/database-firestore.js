@@ -2,9 +2,11 @@
 
 const Firestore = require('@google-cloud/firestore');
 
+// note - keyFilename below assumes a path relative to the app root,
+//   NOT the current directory
 const db = new Firestore({
   projectId: 'saasmaster',
-  keyFilename: './firestore_config.json',
+  keyFilename: './config/firestore_config.json',
 });
 
 var users = db.collection('users');
@@ -32,10 +34,15 @@ exports.storeDocument = async (userId, collection, name, data) => {
 exports.storeBatch = async (userId, collection, data, key) => {
   try {    
     const coll = users.doc(userId).collection(collection);
-    data.forEach(element => {
-      const name = element[key];
+    data.forEach(async (element) => {
+      const keyString = '' + key;  // ensure key is a string
+      const name = element[keyString];
       const doc = coll.doc(name);
-      doc.set(element);
+      try {
+        await doc.set(element);
+      } catch (error) {
+        console.log(`storeBatch: caught exception ${error} while storing ${name}`);
+      }
     });
   } catch (error) {
     console.log(`storeBatch: caught exception: ${error}`);
@@ -43,7 +50,8 @@ exports.storeBatch = async (userId, collection, data, key) => {
   }  
 }
 
-// query for documents
+// query for documents in a collection optionally based on a field value
+// return the results as an array of objects
 exports.query = async (userId, collection, field, value) => {
   try {
     const col = users.doc(userId).collection(collection);

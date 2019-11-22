@@ -7,7 +7,7 @@
 // unlinkAccounts(): unlink a primary and a secondary account
 
 const axios = require('axios');
-const authConfig = require('./auth_config.json');
+const authConfig = require('../config/auth_config.json');
 const database = require('./database');
 
 // get a user's Auth0 profile from the management API

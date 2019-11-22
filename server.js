@@ -6,17 +6,17 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const jwtAuthz = require('express-jwt-authz');
 
-const authConfig = require('./auth_config.json');
-const auth0 = require('./auth0');
+const authConfig = require('./config/auth_config.json');
+const auth0 = require('./src/auth0');
 
 // import providers
-const google = require('./google');
-const facebook = require('./facebook');
-const twitter = require('./twitter');
+const google = require('./src/google');
+const facebook = require('./src/facebook');
+const twitter = require('./src/twitter');
 
 // import database and storage layers
-const database = require('./database');
-const storage = require('./storage');
+const database = require('./src/database');
+const storage = require('./src/storage');
 
 // get environment (dev or prod) based on environment variable
 const env = process.env.NODE_ENV || 'prod';
