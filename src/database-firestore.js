@@ -23,7 +23,8 @@ exports.setEnv = (env) => {
 exports.storeDocument = async (userId, collection, name, data) => {
   try {
     const doc = users.doc(userId).collection(collection).doc(name);
-    await doc.set(data);
+    // note - NO await - to refrain from waiting on the op
+    doc.set(data);
   } catch (error) {
     console.log(`storeDocument: caught exception: ${error}`);
     return null;
@@ -39,7 +40,8 @@ exports.storeBatch = async (userId, collection, data, key) => {
       const name = element[keyString];
       const doc = coll.doc(name);
       try {
-        await doc.set(element);
+        // note - NO await - to refrain from waiting on the op
+        doc.set(element);
       } catch (error) {
         console.log(`storeBatch: caught exception ${error} while storing ${name}`);
       }
