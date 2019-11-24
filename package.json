@@ -12,12 +12,17 @@
     "build": "gcloud builds submit --tag gcr.io/saasmaster/saasmaster-api",
     "deploy": "gcloud beta run deploy saasmaster-api --image gcr.io/saasmaster/saasmaster-api --platform managed",
     "push": "npm run build-spa && npm run copy && npm run build && npm run deploy",
+    "gcp:setup": "npm run gcp:topic && npm run gcp:sub",
+    "gcp:topic": "gcloud pubsub topics create invoke-load",
+    "gcp:sub": "gcloud pubsub subscriptions create invoke-load-sub --topic invoke-load",
+    "gcp:schedule": "gcloud pubsub subscriptions create invoke-load-sub --topic invoke-load",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Omri Gazitt",
   "license": "MIT",
   "dependencies": {
     "@google-cloud/firestore": "^2.5.0",
+    "@google-cloud/pubsub": "^1.1.5",
     "axios": "^0.19.0",
     "body-parser": "^1.19.0",
     "cors": "^2.8.5",

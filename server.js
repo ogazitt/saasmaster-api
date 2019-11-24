@@ -14,9 +14,10 @@ const google = require('./src/google');
 const facebook = require('./src/facebook');
 const twitter = require('./src/twitter');
 
-// import database and storage layers
+// import database, storage, pubsub layers
 const database = require('./src/database');
 const storage = require('./src/storage');
+const pubsub = require('./src/pubsub');
 
 // get environment (dev or prod) based on environment variable
 const env = process.env.NODE_ENV || 'prod';
@@ -29,6 +30,9 @@ console.log('provider:', provider);
 // set database persistence layer based on provider and environment
 database.setProvider(provider);
 database.setEnv(env);
+
+// set up pubsub subscriptions
+pubsub.createSubscription('invoke-load');
 
 // create a new express app
 const app = express();
@@ -66,9 +70,13 @@ app.get('/timesheets', checkJwt, jwtAuthz(['read:timesheets']), function(req, re
   res.status(200).send({});
 });
 
-// async function to invoke a data provider function and return the result
+// async function to retrieve provider data (either from storage cache
+//   or directly from provider), update cache, and return the result
+//   
 //   res: response object
-//   func: data provider function to invoke 
+//   provider: data provider to call
+//   entity: entity to retrieve
+//   forceRefresh: whether to force re-loading the data from provider 
 //   params: extra parameters to pass into the data provider function
 const callDataProvider = async (
   res,          // response object

@@ -7,6 +7,7 @@
 //   storeDocument: store a document into a collection
 //   storeBatch: shred an array into a batch of documents in a collection
 //   query: query for documents across a collection, consolidate into an array 
+//   getAllUsers: get all users stored in system as an array
 //   getUserData: get user info from provider
 //   setUserData: set user info in provider
 //   removeConnection: remove connection for user in provider
@@ -51,6 +52,11 @@ exports.storeBatch = async (userId, collection, data, key) => {
 // return the results as an array of objects
 exports.query = async (userId, collection, field = null, value = null) => {
   return await provider.query(userId, collection, field, value);
+}
+
+// get all users
+exports.getAllUsers = async () => {
+  return await provider.getAllUsers();
 }
 
 // get user data by userid 

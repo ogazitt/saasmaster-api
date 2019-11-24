@@ -3,6 +3,12 @@
 // initialize the users hash (current storage method)
 const users = {};
 
+// get all users
+exports.getAllUsers = async () => {
+  // return all the user names as an array
+  return users.keys;
+}
+
 // get user data by userid 
 exports.getUserData = async (userId, connection) => {
   const user = users[userId];

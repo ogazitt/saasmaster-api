@@ -75,6 +75,17 @@ exports.query = async (userId, collection, field, value) => {
   }  
 }
 
+// get all users as an array 
+exports.getAllUsers = async () => {
+  try {
+    const snapshot = await col.get();
+    return snapshot.docs.map(doc => doc.name);
+  } catch (error) {
+    console.log(`getAllUsers: caught exception: ${error}`);
+    return null;
+  }
+}
+
 // get user data by userid 
 exports.getUserData = async (userId, connection) => {
   try {
