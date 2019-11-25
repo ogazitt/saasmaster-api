@@ -92,10 +92,12 @@ exports.getData = async (userId, provider, entity, forceRefresh, params) => {
 
     // if a refresh isn't forced, and the collection is fresh, return it from cache
     if (!forceRefresh && lastAccessTime > anHourAgo) {
+      console.log(`getData: serving ${userId}:${entity} from cache`);
       return await database.query(userId, entity);
     }
 
     // retrieve data from provider, and store it in the cache
+    console.log(`getData: retrieving ${userId}:${entity} from provider`);
     const array = await exports.invokeProviderAndStoreData(userId, provider, entity, params);
     return array;      
   } catch (error) {
