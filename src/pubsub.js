@@ -1,9 +1,17 @@
-// set up a subscription on the 
+// set up a subscription on the subscription name passed, invoking handler
 
 const { PubSub } = require('@google-cloud/pubsub');
 const pubsub = new PubSub();
 
-exports.createSubscription = (subName) => {
+// create a subscription on the subscription topic name, with a set 
+// of message handlers passed in as a map.
+// format of messages:
+// {
+//   action: 'action name'    // e.g. 'invoke-load'
+//   timestamp: 'ts in msecs' // timestamp when message was generated
+//   ...                      // message specific fields
+// }
+exports.createSubscription = (subName, handlers) => {
   const subscriptionName = subName && 'invoke-load-sub';  
   const subscription = pubsub.subscription(subscriptionName);
   
@@ -17,21 +25,16 @@ exports.createSubscription = (subName) => {
       // convert the message data to a JSON string, and parse into a map
       const data = JSON.parse(message.data.toString());
 
-      // validate the message action
+      // retrieve the action and the handler associated with it
       const action = data.action;
-      if (action === 'invoke-load') {
-        // ensure the message hasn't timed out 
-        // (don't process messages older than 1hr)
-        const timestamp = data.timestamp;
-        const now = new Date().getTime();
-        const anHourAgo = now - 3600000;
+      const handler = action && handlers[action];
 
-        if (timestamp > anHourAgo) {
-          // process message
-          
-          // invoke the data load pipeline
-          console.log('invoking data load pipeline');
-        }
+      // validate the message action
+      if (!action || !handler) {
+        console.log(`messageHandler: unknown action ${action}`);
+      } else {
+        // invoke handler
+        handler(data);
       }
     } catch (error) {
       console.log(`messageHandler: caught exception ${error}`);

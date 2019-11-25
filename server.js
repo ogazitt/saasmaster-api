@@ -9,14 +9,12 @@ const jwtAuthz = require('express-jwt-authz');
 const authConfig = require('./config/auth_config.json');
 const auth0 = require('./src/auth0');
 
-// import providers
-const google = require('./src/google');
-const facebook = require('./src/facebook');
-const twitter = require('./src/twitter');
-
-// import database, storage, pubsub layers
+// import providers, database, storage, datapipeline, pubsub layers
+const providers = require('./src/providers');
+const dataProviders = providers.providers;
 const database = require('./src/database');
 const storage = require('./src/storage');
+const datapipeline = require('./src/datapipeline');
 const pubsub = require('./src/pubsub');
 
 // get environment (dev or prod) based on environment variable
@@ -24,15 +22,18 @@ const env = process.env.NODE_ENV || 'prod';
 console.log('environment:', env);
 
 // get persistence provider based on environment variable
-const provider = process.env.PROVIDER || 'firestore';
-console.log('provider:', provider);
+const persistenceProvider = process.env.PROVIDER || 'firestore';
+console.log('provider:', persistenceProvider);
 
 // set database persistence layer based on provider and environment
-database.setProvider(provider);
+database.setProvider(persistenceProvider);
 database.setEnv(env);
 
-// set up pubsub subscriptions
-pubsub.createSubscription('invoke-load');
+// set up pubsub message handlers and subscriptions
+const handlers = {
+  'invoke-load': datapipeline.dataPipelineHandler
+}
+pubsub.createSubscription('invoke-load', handlers);
 
 // create a new express app
 const app = express();
@@ -84,9 +85,9 @@ const callDataProvider = async (
   provider,     // provider object
   entity,       // entity to retrieve
   forceRefresh, // flag for whether to force refresh
-  ...params) => {
+  params        // array of parameters to pass to the function
+  ) => {
   try {
-    //const data = await func(params);
     const data = await storage.getData(userId, provider, entity, forceRefresh, params);
     if (!data) {
       console.log('callDataProvider: no data returned');
@@ -113,7 +114,13 @@ app.get('/google', checkJwt, function(req, res){
 
   console.log(`/google: user: ${userId}; email: ${email}`);
   
-  callDataProvider(res, userId, google.apis.getCalendarData, 'calendars', refresh, userId);
+  callDataProvider(
+    res, 
+    userId, 
+    dataProviders['google-oauth2'].getCalendarData, 
+    'google-oauth2:calendars', 
+    refresh, 
+    [userId]);
 });
 
 // Get facebook api data endpoint
@@ -123,7 +130,13 @@ app.get('/facebook', checkJwt, function(req, res){
   const refresh = req.query.refresh || false;
   console.log(`/facebook: user: ${userId}; email: ${email}`);
 
-  callDataProvider(res, userId, facebook.apis.getPages, 'pages', refresh, userId);
+  callDataProvider(
+    res, 
+    userId, 
+    dataProviders.facebook.getPages, 
+    'facebook:pages', 
+    refresh, 
+    [userId]);
 });
 
 // Get facebook api data endpoint
@@ -135,7 +148,13 @@ app.get('/facebook/reviews/:pageId', checkJwt, function(req, res){
   const accessToken = req.headers.token;
   console.log(`/facebook/reviews/${pageId}: user: ${userId}; email: ${email}`);
 
-  callDataProvider(res, userId, facebook.apis.getPageReviews, pageId, refresh, pageId, accessToken);
+  callDataProvider(
+    res, 
+    userId, 
+    dataProviders.facebook.getPageReviews, 
+    `facebook:${pageId}`, 
+    refresh, 
+    [pageId, accessToken]);
 });
 
 // Get twitter api data endpoint
@@ -145,7 +164,13 @@ app.get('/twitter', checkJwt, function(req, res){
   const refresh = req.query.refresh || false;
   console.log(`/twitter: user: ${userId}; email: ${email}`);
 
-  callDataProvider(res, userId, twitter.apis.getTweets, 'mentions', refresh, userId);
+  callDataProvider(
+    res, 
+    userId, 
+    dataProviders.twitter.getTweets, 
+    'twitter:mentions', 
+    refresh, 
+    [userId]);
 });
 
 // Get connections API endpoint

@@ -19,7 +19,22 @@ exports.setEnv = (env) => {
   }
 };
 
-// store a document
+// get a document from a collection
+exports.getDocument = async (userId, collection, name) => {
+  try {
+    const doc = await users.doc(userId).collection(collection).doc(name).get();
+    if (!doc.exists) {
+      return null;
+    }
+    const data = doc.data();
+    return data;
+  } catch (error) {
+    console.log(`getDocument: caught exception: ${error}`);
+    return null;
+  }  
+}
+
+// store a document into a collection
 exports.storeDocument = async (userId, collection, name, data) => {
   try {
     const doc = users.doc(userId).collection(collection).doc(name);
@@ -67,8 +82,12 @@ exports.query = async (userId, collection, field, value) => {
       snapshot = await col.get();
     }
 
-    // return an array with all the data from the documents
-    return snapshot.docs.map(doc => doc.data());
+    // get an array with all the data from the documents, except __invoke_info
+    const docArray = snapshot.docs.filter(item => item.id != '__invoke_info');
+    const array = docArray.map(doc => doc.data());
+
+    // return results
+    return array;
   } catch (error) {
     console.log(`query: caught exception: ${error}`);
     return null;
@@ -78,10 +97,22 @@ exports.query = async (userId, collection, field, value) => {
 // get all users as an array 
 exports.getAllUsers = async () => {
   try {
-    const snapshot = await col.get();
-    return snapshot.docs.map(doc => doc.name);
+    const snapshot = await users.get();
+    return snapshot.docs.map(doc => doc.id);
   } catch (error) {
     console.log(`getAllUsers: caught exception: ${error}`);
+    return null;
+  }
+}
+
+// get user collections as an array
+exports.getUserCollections = async (userId) => {
+  try {
+    const user = users.doc(userId);
+    const snapshot = await user.listCollections();
+    return snapshot.map(coll => coll.id);
+  } catch (error) {
+    console.log(`getUserCollections: caught exception: ${error}`);
     return null;
   }
 }

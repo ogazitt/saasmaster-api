@@ -15,14 +15,14 @@ const auth0 = require('./auth0');
 // api's defined by this provider
 exports.apis = {
   getPages: {
+    name: 'getPages',
     provider: 'facebook',
-    func: null,
     arrayKey: 'data',
     itemKey: 'id'
   },
   getPageReviews: {
+    name: 'getPageReviews',
     provider: 'facebook',
-    func: null,
     arrayKey: 'data',
     itemKey: 'created_time'
   },

@@ -14,14 +14,14 @@ const auth0 = require('./auth0');
 // the actual function is added after it is defined below
 exports.apis = {
   getCalendarData: {
+    name: 'getCalendarData',
     provider: 'google-oauth2',
-    func: null,
     arrayKey: 'items',
     itemKey: 'id'
   },
   getGoogleLocations: {
+    name: 'getGoogleLocation',
     provider: 'google-oauth2',
-    func: null,
   },
 };
 

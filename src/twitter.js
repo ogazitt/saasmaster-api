@@ -13,8 +13,8 @@ const oauthSignature = require('oauth-signature');
 // api's defined by this provider
 exports.apis = {
   getTweets: {
+    name: 'getTweets',
     provider: 'twitter',
-    func: null,
     arrayKey: null,
     itemKey: 'id_str'
   },
