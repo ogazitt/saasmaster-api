@@ -52,8 +52,8 @@ exports.invokeProviderAndStoreData = async (userId, provider, entity, params) =>
       params: params
     }
 
-    // store the invocation information as a well-known document in the collection
-    await database.storeDocument(userId, entity, "__invoke_info", invokeInfo);
+    // store the invocation information as a well-known document (__invoke_info) in the collection
+    await database.storeDocument(userId, entity, database.invokeInfo, invokeInfo);
 
     // shred the data returned into a batch of documents in the collection
     await database.storeBatch(userId, entity, array, provider.itemKey);

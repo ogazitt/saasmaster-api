@@ -26,6 +26,12 @@ const providers = {
   memory: memory
 }
 
+// define some constants - system info "userId" and invoke info "document name"
+exports.systemInfo = '__system_info';
+exports.invokeInfo = '__invoke_info';
+exports.dataPipelineSection = 'dataPipeline';
+exports.lastUpdatedTimestamp = 'lastUpdatedTimestamp';
+
 // set the provider
 var provider = providers['firestore']
 
@@ -63,7 +69,10 @@ exports.query = async (userId, collection, field = null, value = null) => {
 
 // get all users
 exports.getAllUsers = async () => {
-  return await provider.getAllUsers();
+  const users = await provider.getAllUsers();
+
+  // filter out the system info synthetic user
+  return users.filter(u => u !== exports.systemInfo);
 }
 
 // get user collections

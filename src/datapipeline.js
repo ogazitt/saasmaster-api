@@ -9,15 +9,19 @@ const dataProviders = providers.providers;
 const storage = require('./storage');
 
 // pubsub handler for invoking the data pipeline
-exports.dataPipelineHandler = (data) => {
-  // ensure the message hasn't timed out 
-  // (don't process messages older than 1hr)
-  const timestamp = data.timestamp;
+exports.dataPipelineHandler = async (data) => {
+  // compute the current timestamp and an hour ago
   const now = new Date().getTime();
-  const anHourAgo = now - 3600000;
+  const min59 = 59 * 60000;
+  const hr1 = 60 * 60000;
 
-  if (timestamp > anHourAgo) {
-    // invoke the data load pipeline
+  // retrieve last data pipeline run timestamp 
+  const systemInfo = await database.getUserData(database.systemInfo, database.dataPipelineSection);
+  const timestamp = systemInfo && systemInfo[database.lastUpdatedTimestamp] || 
+        now - hr1;  // if the timestamp doesn't exist, set it to 1 hour ago
+
+  // if the timestamp is older than 59 minutes, invoke the data load pipeline
+  if (now - timestamp > min59) {
     console.log('invoking data load pipeline');
     invokeDataPipeline();
   }
@@ -38,7 +42,7 @@ const invokeDataPipeline = async () => {
         // loop over each of the collections, and re-retrieve them
         collections && collections.forEach(async collection => {
           // retrieve the __invoke_info document for the collection
-          const invokeInfo = await database.getDocument(userId, collection, '__invoke_info');
+          const invokeInfo = await database.getDocument(userId, collection, database.invokeInfo);
 
           // validate invocation info
           if (invokeInfo && invokeInfo.provider && invokeInfo.name) {
@@ -59,6 +63,12 @@ const invokeDataPipeline = async () => {
         console.log(`invokeDataPipeline: user ${userId} caught exception: ${error}`);        
       }
     });
+
+    // update last updated timestamp with current timestamp
+    const dataPipelineObject = {};
+    dataPipelineObject[database.lastUpdatedTimestamp] = new Date().getTime();
+    await database.setUserData(database.systemInfo, database.dataPipelineSection, dataPipelineObject);
+    
   } catch (error) {
     console.log(`invokeDataPipeline: caught exception: ${error}`);
   }
