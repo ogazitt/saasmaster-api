@@ -79,7 +79,7 @@ const callDataProvider = async (
   res,          // response object
   userId,       // userId for this request
   provider,     // provider object
-  entity,       // entity to retrieve
+  entity,       // entity to retrieve (null for default)
   params,       // array of parameters to pass to the function
   forceRefresh  // flag for whether to force refresh
   ) => {
@@ -114,8 +114,8 @@ app.get('/google', checkJwt, function(req, res){
     res, 
     userId, 
     dataProviders['google-oauth2'].getCalendarData, 
-    'google-oauth2:calendars', 
-    [userId],
+    null,     // default entity name
+    [userId], // parameter array
     refresh);
 });
 
@@ -130,8 +130,8 @@ app.get('/facebook', checkJwt, function(req, res){
     res, 
     userId, 
     dataProviders.facebook.getPages, 
-    'facebook:pages', 
-    [userId],
+    null,     // default entity name
+    [userId], // parameter array
     refresh);
 });
 
@@ -148,8 +148,8 @@ app.get('/facebook/reviews/:pageId', checkJwt, function(req, res){
     res, 
     userId, 
     dataProviders.facebook.getPageReviews, 
-    `facebook:${pageId}`, 
-    [pageId, accessToken],
+    `facebook:${pageId}`,  // entity name must be constructed dynamically
+    [pageId, accessToken], // parameter array
     refresh);
 });
 
@@ -164,8 +164,8 @@ app.get('/twitter', checkJwt, function(req, res){
     res, 
     userId, 
     dataProviders.twitter.getTweets, 
-    'twitter:mentions', 
-    [userId],
+    null,     // default entity name
+    [userId], // parameter array
     refresh);
 });
 

@@ -9,7 +9,7 @@ const database = require('./database');
 exports.getData = async (userId, provider, entity, params, forceRefresh = false) => {
   try {
     const providerName = provider && provider.provider;
-    const entityName = entity || provider.entityName;
+    const entityName = entity || provider.entity;
     // basic error checking
     if (!providerName || !entityName) {
       console.log(`getData: failed to validate provider ${providerName} / entity ${entityName}`);
@@ -17,24 +17,24 @@ exports.getData = async (userId, provider, entity, params, forceRefresh = false)
     }
 
     // get the __invoke_info document
-    const invokeInfo = await database.getDocument(userId, entity, database.invokeInfo);
-    const lastRetrieved = invokeInfo.lastRetrieved;
+    const invokeInfo = await database.getDocument(userId, entityName, database.invokeInfo);
+    const lastRetrieved = invokeInfo && invokeInfo.lastRetrieved;
     const now = new Date().getTime();
     const anHourAgo = now - 3600000;
 
     // if a refresh isn't forced, and the collection is fresh, return it from cache
     if (!forceRefresh && lastRetrieved > anHourAgo) {
-      console.log(`getData: serving ${userId}:${entity} from cache`);
-      return await database.query(userId, entity);
+      console.log(`getData: serving ${userId}:${entityName} from cache`);
+      return await database.query(userId, entityName);
     }
 
-    console.log(`getData: retrieving ${userId}:${entity} from provider`);
+    console.log(`getData: retrieving ${userId}:${entityName} from provider`);
 
     // retrieve data from provider
     const data = await exports.callProvider(provider, params);
 
     // store the data, but do NOT await the operation
-    exports.storeData(userId, provider, entity, params, data);
+    exports.storeData(userId, provider, entityName, params, data);
 
     return data;      
   } catch (error) {

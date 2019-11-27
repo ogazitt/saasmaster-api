@@ -17,6 +17,7 @@ exports.apis = {
   getPages: {
     name: 'getPages',
     provider: 'facebook',
+    entity: 'facebook:pages',
     arrayKey: 'data',
     itemKey: 'id'
   },

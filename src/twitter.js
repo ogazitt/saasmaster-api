@@ -15,6 +15,7 @@ exports.apis = {
   getTweets: {
     name: 'getTweets',
     provider: 'twitter',
+    entity: 'twitter:mentions',
     arrayKey: null,
     itemKey: 'id_str'
   },

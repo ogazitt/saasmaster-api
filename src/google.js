@@ -16,6 +16,7 @@ exports.apis = {
   getCalendarData: {
     name: 'getCalendarData',
     provider: 'google-oauth2',
+    entity: 'google-oauth2:calendars',
     arrayKey: 'items',
     itemKey: 'id'
   },
