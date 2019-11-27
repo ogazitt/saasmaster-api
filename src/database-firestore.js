@@ -50,17 +50,18 @@ exports.storeDocument = async (userId, collection, name, data) => {
 exports.storeBatch = async (userId, collection, data, key) => {
   try {    
     const coll = users.doc(userId).collection(collection);
-    data.forEach(async (element) => {
+
+    // await the completion of all documents, which are run in parallel
+    await Promise.all(data.map(async (element) => {
       const keyString = '' + key;  // ensure key is a string
       const name = element[keyString];
       const doc = coll.doc(name);
       try {
-        // note - NO await - to refrain from waiting on the op
-        doc.set(element);
+        await doc.set(element);
       } catch (error) {
         console.log(`storeBatch: caught exception ${error} while storing ${name}`);
       }
-    });
+    }));
   } catch (error) {
     console.log(`storeBatch: caught exception: ${error}`);
     return null;

@@ -10,7 +10,8 @@ const pubsub = new PubSub({
 });
 
 // set up some constants
-const ackDeadlineSeconds = 60;
+const ackDeadlineSeconds = 60;  // allow 60 seconds for message processing
+const maxMessages = 1;  // only process one message at a time
 
 exports.createTopic = async (topicName) => {
   try {
@@ -39,13 +40,23 @@ exports.createSubscription = async (topic, subName, handlers) => {
   let subscription;
   try {
     [subscription] = await pubsub.createSubscription(topic, subName, 
-      { ackDeadlineSeconds: ackDeadlineSeconds });
+      { 
+        ackDeadlineSeconds: ackDeadlineSeconds,
+        flowControl: {
+          maxMessages: maxMessages,
+        } 
+      });
   } catch (error) {
     // check for an error indicating that a topic already exists
     if (error.code === 6) {
       // use the existing subscription
       subscription = await pubsub.subscription(subName,
-        { ackDeadlineSeconds: ackDeadlineSeconds });
+        { 
+          ackDeadlineSeconds: ackDeadlineSeconds,
+          flowControl: {
+            maxMessages: maxMessages,
+          } 
+        });
       } else {
       console.log(`createSubscription caught exception: ${error}`);
       return null;
@@ -56,7 +67,6 @@ exports.createSubscription = async (topic, subName, handlers) => {
   const messageHandler = async (message) => {
     console.log(`Received message ${message.id}:`);
     console.log(`\tData: ${message.data}`);
-    console.log(`\tAttributes: ${message.attributes}`);
 
     try {
       // convert the message data to a JSON string, and parse into a map

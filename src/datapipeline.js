@@ -81,20 +81,30 @@ const invokeDataPipeline = async () => {
     // get all the users in the database
     const users = await database.getAllUsers();
 
-    // loop over the users asynchronously
-    users.forEach(async userId => {
+    // compute the current timestamp and an hour ago
+    const now = new Date().getTime();
+    const hr1 = 60 * 60000;
+    
+    // loop over the users in parallel
+    await Promise.all(users.map(async userId => {
       try {
         // retrieve all the collections associated with the user
         const collections = await database.getUserCollections(userId);
         console.log(`user: ${userId} collections: ${collections}`);
 
-        // loop over each of the collections, and re-retrieve them
-        collections && collections.forEach(async collection => {
+        // if no results, nothing to do
+        if (!collections || !collections.length) {
+          return;
+        }
+
+        // retrieve each of the collections in parallel
+        await Promise.all(collections.map(async collection => {
           // retrieve the __invoke_info document for the collection
           const invokeInfo = await database.getDocument(userId, collection, database.invokeInfo);
+          const lastRetrieved = invokeInfo.lastRetrieved || now - hr1;  // if the timestamp doesn't exist, set it to 1 hour ago
 
           // if the collection isn't stale, skip retrieval
-          if (!isStale(invokeInfo.lastRetrieved)) {
+          if (!isStale(lastRetrieved)) {
             return;
           }
 
@@ -108,22 +118,28 @@ const invokeDataPipeline = async () => {
 
             // validate more invocation info
             if (userId && provider && collection && params) {
-              // invoke async function without an await
-              await storage.invokeProviderAndStoreData(userId, provider, collection, params);
+              // call the provider and retrieve the data
+              const data = await storage.callProvider(provider, params);
+
+              // await the storage of the data 
+              await storage.storeData(userId, provider, collection, params, data);
+              console.log(`retrieved and stored ${userId}:${collection}`);
             }
           }
-        });
+        }));
       } catch (error) {
         console.log(`invokeDataPipeline: user ${userId} caught exception: ${error}`);        
       }
-    });
+    }));
 
     // update last updated timestamp with current timestamp
     const dataPipelineObject = {};
-    dataPipelineObject[database.lastUpdatedTimestamp] = new Date().getTime();
+    const currentTime = new Date();
+    dataPipelineObject[database.lastUpdatedTimestamp] = currentTime.getTime();
     dataPipelineObject[database.inProgress] = false;
     await database.setUserData(database.systemInfo, database.dataPipelineSection, dataPipelineObject);
-    
+    console.log(`invokeDataPipeline: completed at ${currentTime.toLocaleTimeString()}`);
+
   } catch (error) {
     console.log(`invokeDataPipeline: caught exception: ${error}`);
   }
