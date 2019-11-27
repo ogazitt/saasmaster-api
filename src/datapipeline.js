@@ -8,22 +8,32 @@ const providers = require('./providers');
 const dataProviders = providers.providers;
 const storage = require('./storage');
 const pubsub = require('./pubsub');
+const scheduler = require('./scheduler');
 
 exports.createDataPipeline = async (env) => {
-  // set up the action name, topic name, subscription name based on env
-  const invokeLoad = 'invoke-load';
-  const topicName = `${invokeLoad}-${env}`;
-  const subName = `${invokeLoad}-sub-${env}`;
+  try {
+    // set up the action name, topic name, subscription name based on env
+    const invokeLoad = 'invoke-load';
+    const topicName = `${invokeLoad}-${env}`;
+    const subName = `${invokeLoad}-sub-${env}`;
+    const jobName = `${invokeLoad}-job-${env}`;
 
-  // create or retrieve topic
-  const topic = await pubsub.createTopic(topicName);
+    // create or retrieve topic
+    const topic = await pubsub.createTopic(topicName);
 
-  // set up handlers
-  const handlers = {};
-  handlers[invokeLoad] = dataPipelineHandler;
+    // set up handlers
+    const handlers = {};
+    handlers[invokeLoad] = dataPipelineHandler;
 
-  // create subscription
-  await pubsub.createSubscription(topic, subName, handlers)
+    // create subscription
+    await pubsub.createSubscription(topic, subName, handlers)
+
+    // create scheduler job
+    await scheduler.createPubSubJob(jobName, topic.name);
+      
+  } catch (error) {
+    console.log(`createDataPipeline: caught exception: ${error}`);
+  }
 }
 
 // return true if the timestamp is older than 59 minutes ago
@@ -36,25 +46,29 @@ const isStale = (timestamp) => {
 
 // pubsub handler for invoking the data pipeline
 const dataPipelineHandler = async (data) => {
-  // compute the current timestamp and an hour ago
-  const now = new Date().getTime();
-  const hr1 = 60 * 60000;
+  try {
+    // compute the current timestamp and an hour ago
+    const now = new Date().getTime();
+    const hr1 = 60 * 60000;
 
-  // retrieve last data pipeline run timestamp 
-  const dataPipelineObject = await database.getUserData(database.systemInfo, database.dataPipelineSection);
-  const timestamp = dataPipelineObject && dataPipelineObject[database.lastUpdatedTimestamp] || 
-        now - hr1;  // if the timestamp doesn't exist, set it to 1 hour ago
-  
-  // if the timestamp is older than 59 minutes, invoke the data load pipeline
-  if (isStale(timestamp) && !dataPipelineObject.inProgress) {
-    console.log('invoking data load pipeline');
+    // retrieve last data pipeline run timestamp 
+    const dataPipelineObject = await database.getUserData(database.systemInfo, database.dataPipelineSection);
+    const timestamp = dataPipelineObject && dataPipelineObject[database.lastUpdatedTimestamp] || 
+          now - hr1;  // if the timestamp doesn't exist, set it to 1 hour ago
+    
+    // if the timestamp is older than 59 minutes, invoke the data load pipeline
+    if (isStale(timestamp) && !dataPipelineObject.inProgress) {
+      console.log('invoking data load pipeline');
 
-    // set a flag indicating data pipeline is "inProgress"
-    dataPipelineObject[database.inProgress] = true;
-    await database.setUserData(database.systemInfo, database.dataPipelineSection, dataPipelineObject);
+      // set a flag indicating data pipeline is "inProgress"
+      dataPipelineObject[database.inProgress] = true;
+      await database.setUserData(database.systemInfo, database.dataPipelineSection, dataPipelineObject);
 
-    // invoke data pipeline
-    await invokeDataPipeline();
+      // invoke data pipeline
+      await invokeDataPipeline();
+    }
+  } catch (error) {
+    console.log(`dataPipelineHandler: caught exception: ${error}`);
   }
 }
 

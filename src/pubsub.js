@@ -1,7 +1,13 @@
-// set up a subscription on the subscription name passed, invoking handler
+// pubsub system based on google cloud pubsub
+// exports:
+//   createTopic: creates a topic, or if it exists, gets a reference to it
+//   createSubscription: creates a sub on a topic, using the event handlers passed in
 
 const { PubSub } = require('@google-cloud/pubsub');
 const pubsub = new PubSub();
+
+// set up some constants
+const ackDeadlineSeconds = 60;
 
 exports.createTopic = async (topicName) => {
   try {
@@ -30,13 +36,13 @@ exports.createSubscription = async (topic, subName, handlers) => {
   let subscription;
   try {
     [subscription] = await pubsub.createSubscription(topic, subName, 
-      { ackDeadlineSeconds: 60 });
+      { ackDeadlineSeconds: ackDeadlineSeconds });
   } catch (error) {
     // check for an error indicating that a topic already exists
     if (error.code === 6) {
       // use the existing subscription
       subscription = await pubsub.subscription(subName,
-        { ackDeadlineSeconds: 60 });
+        { ackDeadlineSeconds: ackDeadlineSeconds });
       } else {
       console.log(`createSubscription caught exception: ${error}`);
       return null;
@@ -71,10 +77,16 @@ exports.createSubscription = async (topic, subName, handlers) => {
     // always ack the message
     message.ack();
   };
+
+  // error handler
+  const errorHandler = async (error) => {
+    console.log(`errorHandler: caught error ${error}:`);
+  }
   
   try {
     // listen for new messages
     subscription.on(`message`, messageHandler);
+    subscription.on(`error`, errorHandler);
     console.log(`listening on subscription ${subName}`);
   } catch (error) {
     console.log(`createSubscription: caught exception ${error}`);
