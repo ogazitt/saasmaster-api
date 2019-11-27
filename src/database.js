@@ -31,6 +31,7 @@ exports.systemInfo = '__system_info';
 exports.invokeInfo = '__invoke_info';
 exports.dataPipelineSection = 'dataPipeline';
 exports.lastUpdatedTimestamp = 'lastUpdatedTimestamp';
+exports.inProgress = 'inProgress';
 
 // set the provider
 var provider = providers['firestore']

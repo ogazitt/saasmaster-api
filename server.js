@@ -9,13 +9,12 @@ const jwtAuthz = require('express-jwt-authz');
 const authConfig = require('./config/auth_config.json');
 const auth0 = require('./src/auth0');
 
-// import providers, database, storage, datapipeline, pubsub layers
+// import providers, database, storage, datapipeline layers
 const providers = require('./src/providers');
 const dataProviders = providers.providers;
 const database = require('./src/database');
 const storage = require('./src/storage');
 const datapipeline = require('./src/datapipeline');
-const pubsub = require('./src/pubsub');
 
 // get environment (dev or prod) based on environment variable
 const env = process.env.NODE_ENV || 'prod';
@@ -29,11 +28,8 @@ console.log('provider:', persistenceProvider);
 database.setProvider(persistenceProvider);
 database.setEnv(env);
 
-// set up pubsub message handlers and subscriptions
-const handlers = {
-  'invoke-load': datapipeline.dataPipelineHandler
-}
-pubsub.createSubscription('invoke-load', handlers);
+// create the data pipeline based on the environment
+datapipeline.createDataPipeline(env);
 
 // create a new express app
 const app = express();
@@ -84,11 +80,11 @@ const callDataProvider = async (
   userId,       // userId for this request
   provider,     // provider object
   entity,       // entity to retrieve
-  forceRefresh, // flag for whether to force refresh
-  params        // array of parameters to pass to the function
+  params,       // array of parameters to pass to the function
+  forceRefresh  // flag for whether to force refresh
   ) => {
   try {
-    const data = await storage.getData(userId, provider, entity, forceRefresh, params);
+    const data = await storage.getData(userId, provider, entity, params, forceRefresh);
     if (!data) {
       console.log('callDataProvider: no data returned');
       res.status(200).send({ message: 'no data returned'});
@@ -119,8 +115,8 @@ app.get('/google', checkJwt, function(req, res){
     userId, 
     dataProviders['google-oauth2'].getCalendarData, 
     'google-oauth2:calendars', 
-    refresh, 
-    [userId]);
+    [userId],
+    refresh);
 });
 
 // Get facebook api data endpoint
@@ -135,8 +131,8 @@ app.get('/facebook', checkJwt, function(req, res){
     userId, 
     dataProviders.facebook.getPages, 
     'facebook:pages', 
-    refresh, 
-    [userId]);
+    [userId],
+    refresh);
 });
 
 // Get facebook api data endpoint
@@ -153,8 +149,8 @@ app.get('/facebook/reviews/:pageId', checkJwt, function(req, res){
     userId, 
     dataProviders.facebook.getPageReviews, 
     `facebook:${pageId}`, 
-    refresh, 
-    [pageId, accessToken]);
+    [pageId, accessToken],
+    refresh);
 });
 
 // Get twitter api data endpoint
@@ -169,8 +165,8 @@ app.get('/twitter', checkJwt, function(req, res){
     userId, 
     dataProviders.twitter.getTweets, 
     'twitter:mentions', 
-    refresh, 
-    [userId]);
+    [userId],
+    refresh);
 });
 
 // Get connections API endpoint
@@ -181,17 +177,11 @@ app.get('/connections', checkJwt, function(req, res){
   const userId = req.user['sub'];
   console.log(`/connections: user: ${userId}; email: ${email}`);
 
-  const returnUserInfo = async () => {
-    const user = await database.getUserData(userId) || {};
-    res.status(200).send(user);
-  }
-
   const returnConnections = async () => {
     const conns = await database.connections(userId) || {};
     res.status(200).send(conns);
   }
 
-  //returnUserInfo();
   returnConnections();
 });
 

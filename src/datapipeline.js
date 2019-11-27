@@ -1,29 +1,60 @@
 // data pipeline layer
 // 
 // exports:
-//   dataPipelineHandler: pubsub handler for invoking the data pipeline
+//   createDataPipeline: create pubsub machinery for data pipeine
 
 const database = require('./database');
 const providers = require('./providers');
 const dataProviders = providers.providers;
 const storage = require('./storage');
+const pubsub = require('./pubsub');
 
-// pubsub handler for invoking the data pipeline
-exports.dataPipelineHandler = async (data) => {
+exports.createDataPipeline = async (env) => {
+  // set up the action name, topic name, subscription name based on env
+  const invokeLoad = 'invoke-load';
+  const topicName = `${invokeLoad}-${env}`;
+  const subName = `${invokeLoad}-sub-${env}`;
+
+  // create or retrieve topic
+  const topic = await pubsub.createTopic(topicName);
+
+  // set up handlers
+  const handlers = {};
+  handlers[invokeLoad] = dataPipelineHandler;
+
+  // create subscription
+  await pubsub.createSubscription(topic, subName, handlers)
+}
+
+// return true if the timestamp is older than 59 minutes ago
+const isStale = (timestamp) => {
   // compute the current timestamp and an hour ago
   const now = new Date().getTime();
   const min59 = 59 * 60000;
+  return (now - timestamp > min59);
+}
+
+// pubsub handler for invoking the data pipeline
+const dataPipelineHandler = async (data) => {
+  // compute the current timestamp and an hour ago
+  const now = new Date().getTime();
   const hr1 = 60 * 60000;
 
   // retrieve last data pipeline run timestamp 
-  const systemInfo = await database.getUserData(database.systemInfo, database.dataPipelineSection);
-  const timestamp = systemInfo && systemInfo[database.lastUpdatedTimestamp] || 
+  const dataPipelineObject = await database.getUserData(database.systemInfo, database.dataPipelineSection);
+  const timestamp = dataPipelineObject && dataPipelineObject[database.lastUpdatedTimestamp] || 
         now - hr1;  // if the timestamp doesn't exist, set it to 1 hour ago
-
+  
   // if the timestamp is older than 59 minutes, invoke the data load pipeline
-  if (now - timestamp > min59) {
+  if (isStale(timestamp) && !dataPipelineObject.inProgress) {
     console.log('invoking data load pipeline');
-    invokeDataPipeline();
+
+    // set a flag indicating data pipeline is "inProgress"
+    dataPipelineObject[database.inProgress] = true;
+    await database.setUserData(database.systemInfo, database.dataPipelineSection, dataPipelineObject);
+
+    // invoke data pipeline
+    await invokeDataPipeline();
   }
 }
 
@@ -44,6 +75,11 @@ const invokeDataPipeline = async () => {
           // retrieve the __invoke_info document for the collection
           const invokeInfo = await database.getDocument(userId, collection, database.invokeInfo);
 
+          // if the collection isn't stale, skip retrieval
+          if (!isStale(invokeInfo.lastRetrieved)) {
+            return;
+          }
+
           // validate invocation info
           if (invokeInfo && invokeInfo.provider && invokeInfo.name) {
             const providerName = invokeInfo.provider,
@@ -55,7 +91,7 @@ const invokeDataPipeline = async () => {
             // validate more invocation info
             if (userId && provider && collection && params) {
               // invoke async function without an await
-              storage.invokeProviderAndStoreData(userId, provider, collection, params);
+              await storage.invokeProviderAndStoreData(userId, provider, collection, params);
             }
           }
         });
@@ -67,6 +103,7 @@ const invokeDataPipeline = async () => {
     // update last updated timestamp with current timestamp
     const dataPipelineObject = {};
     dataPipelineObject[database.lastUpdatedTimestamp] = new Date().getTime();
+    dataPipelineObject[database.inProgress] = false;
     await database.setUserData(database.systemInfo, database.dataPipelineSection, dataPipelineObject);
     
   } catch (error) {

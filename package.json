@@ -12,7 +12,7 @@
     "build": "gcloud builds submit --tag gcr.io/saasmaster/saasmaster-api",
     "deploy": "gcloud beta run deploy saasmaster-api --image gcr.io/saasmaster/saasmaster-api --platform managed",
     "push": "npm run build-spa && npm run copy && npm run build && npm run deploy",
-    "gcp:setup": "npm run gcp:topic && npm run gcp:sub && npm run gcp:schedule",
+    "gcp:setup": "npm run gcp:schedule",
     "gcp:topic": "gcloud pubsub topics create invoke-load",
     "gcp:sub": "gcloud pubsub subscriptions create invoke-load-sub --topic invoke-load",
     "gcp:schedule": "gcloud scheduler jobs create pubsub invoke-load-job --schedule='0 */1 * * *' --topic=invoke-load --message-body-from-file=config/invoke-load.json",

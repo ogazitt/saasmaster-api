@@ -4,12 +4,14 @@
 const { PubSub } = require('@google-cloud/pubsub');
 const pubsub = new PubSub();
 
-const topicName = 'invoke-load';
+const env = process.env.NODE_ENV || 'prod';
+console.log('environment:', env);
+
+const topicName = `invoke-load-${env}`;
 
 // create an 'invoke-load' message
 const message = JSON.stringify({ 
-  action: 'invoke-load',
-  timestamp: new Date().getTime()
+  action: 'invoke-load'
 });
 
 const messageBuffer = Buffer.from(message);
