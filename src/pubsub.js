@@ -4,7 +4,10 @@
 //   createSubscription: creates a sub on a topic, using the event handlers passed in
 
 const { PubSub } = require('@google-cloud/pubsub');
-const pubsub = new PubSub();
+const pubsub = new PubSub({
+  projectId: 'saasmaster',
+  keyFilename: './config/firestore_config.json',
+});
 
 // set up some constants
 const ackDeadlineSeconds = 60;

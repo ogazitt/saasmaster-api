@@ -20,6 +20,10 @@ exports.createDataPipeline = async (env) => {
 
     // create or retrieve topic
     const topic = await pubsub.createTopic(topicName);
+    if (!topic) {
+      console.log(`createDataPipeline: could not create or find topic ${topicName}`);
+      return;
+    }
 
     // set up handlers
     const handlers = {};
