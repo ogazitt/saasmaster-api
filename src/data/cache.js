@@ -1,10 +1,11 @@
-// storage layer for caching entities in the database
+// cache layer for caching entities in the database
+// 
 // exports:
 //   getData: retrieve an entity either from cache, or from data source and cache it
-//   callProvider: retrieve an entity from data source 
 //   storeData: store the entity in the cache
 
 const database = require('./database');
+const callProvider = require('../providers/provider');
 
 exports.getData = async (userId, provider, entity, params, forceRefresh = false) => {
   try {
@@ -31,41 +32,16 @@ exports.getData = async (userId, provider, entity, params, forceRefresh = false)
     console.log(`getData: retrieving ${userId}:${entityName} from provider`);
 
     // retrieve data from provider
-    const data = await exports.callProvider(provider, params);
+    const data = await callProvider.callProvider(provider, params);
 
     // store the data, but do NOT await the operation
-    exports.storeData(userId, provider, entityName, params, data);
+    if (data) {
+      exports.storeData(userId, provider, entityName, params, data);
+    }
 
     return data;      
   } catch (error) {
     console.log(`getData: caught exception: ${error}`);
-    return null;
-  }
-}
-
-exports.callProvider = async (provider, params) => {
-  try {
-    const func = provider && provider.func;
-    // basic error checking
-    if (!func) {
-      console.log('callProvider: failed to validate provider function');
-      return null;
-    }
-  
-    // retrieve data from provider
-    const data = await func(params);
-    if (!data) {
-      console.log(`callProvider: no data returned from ${provider.provider}:${provider.name}`);
-      return null;
-    }
-
-    // get array of returned data
-    const array = provider.arrayKey ? data[provider.arrayKey] : data;
-
-    // return the data
-    return array;
-  } catch (error) {
-    console.log(`callProvider: caught exception: ${error}`);
     return null;
   }
 }

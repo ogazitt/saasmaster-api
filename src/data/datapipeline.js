@@ -5,11 +5,12 @@
 //   dataPipelineHandler: event handler for invoking the data pipeline
 
 const database = require('./database');
-const providers = require('./providers');
+const providers = require('../providers/providers');
 const dataProviders = providers.providers;
-const storage = require('./storage');
-const pubsub = require('./pubsub');
-const scheduler = require('./scheduler');
+const callProvider = require('../providers/provider');
+const cache = require('./cache');
+const pubsub = require('../services/pubsub');
+const scheduler = require('../services/scheduler');
 
 exports.createDataPipeline = async (env) => {
   try {
@@ -154,11 +155,13 @@ const invokeDataPipeline = async () => {
             // validate more invocation info
             if (userId && provider && collection && params) {
               // call the provider and retrieve the data
-              const data = await storage.callProvider(provider, params);
+              const data = await callProvider.callProvider(provider, params);
 
-              // await the storage of the data 
-              await storage.storeData(userId, provider, collection, params, data);
-              console.log(`retrieved and stored ${userId}:${collection}`);
+              if (data) {
+                // await the storage of the data 
+                await cache.storeData(userId, provider, collection, params, data);
+                console.log(`retrieved and stored ${userId}:${collection}`);                
+              }
             }
           }
         }));

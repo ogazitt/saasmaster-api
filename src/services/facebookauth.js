@@ -1,33 +1,11 @@
-// facebook utility functions
-
+// facebook authentication utilities
+// 
 // exports:
-// getFacebookAccessInfo(userId): abstracts all logic to retrieve a FB access token / userid
-// getPages(userId): get pages that the userid has access to
-// getPageReviews(pageId, accessToken): get page reviews
+//   getFacebookAccessInfo(userId): abstracts all logic to retrieve a FB access token / userid
 
-//const bizSdk = require('facebook-nodejs-business-sdk');
-
-const axios = require('axios');
-const database = require('./database');
-const authConfig = require('../config/auth_config.json');
-const auth0 = require('./auth0');
-
-// api's defined by this provider
-exports.apis = {
-  getPages: {
-    name: 'getPages',
-    provider: 'facebook',
-    entity: 'facebook:pages',
-    arrayKey: 'data',
-    itemKey: 'id'
-  },
-  getPageReviews: {
-    name: 'getPageReviews',
-    provider: 'facebook',
-    arrayKey: 'data',
-    itemKey: 'created_time'
-  },
-};
+const database = require('../data/database');
+const authConfig = require('../../config/auth_config.json');
+const auth0 = require('../services/auth0');
 
 exports.getFacebookAccessInfo = async (userId) => {
 
@@ -56,59 +34,6 @@ exports.getFacebookAccessInfo = async (userId) => {
   } catch (error) {
     await error.response;
     console.log(`getFacebookAccessInfo: caught exception: ${error}`);
-    return null;
-  }
-};
-
-exports.apis.getPages.func = async ([userId]) => {
-  try {
-    const user = await exports.getFacebookAccessInfo(userId);
-    const fb_userid = user && user.userId;
-    const accessToken = user && user.accessToken;
-
-    if (!accessToken || !fb_userid) {
-      console.log('getPagesData: getFacebookAccessToken failed');
-      return null;
-    }
-
-    const url = `https://graph.facebook.com/${fb_userid}/accounts?access_token=${accessToken}`;
-    const headers = { 
-      'content-type': 'application/json'
-     };
-
-    const response = await axios.get(
-      url,
-      {
-        headers: headers
-      });
-
-      // response received successfully
-    return response.data;
-  } catch (error) {
-    await error.response;
-    console.log(`getPagesData: caught exception: ${error}`);
-    return null;
-  }
-};
-
-exports.apis.getPageReviews.func = async ([pageId, accessToken]) => {
-  try {
-    const url = `https://graph.facebook.com/v5.0/${pageId}/ratings?access_token=${accessToken}`;
-    const headers = { 
-      'content-type': 'application/json'
-     };
-
-    const response = await axios.get(
-      url,
-      {
-        headers: headers
-      });
-
-      // response received successfully
-    return response.data;
-  } catch (error) {
-    await error.response;
-    console.log(`getPagesData: caught exception: ${error}`);
     return null;
   }
 };

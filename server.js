@@ -7,17 +7,17 @@ const bodyParser = require('body-parser');
 const jwtAuthz = require('express-jwt-authz');
 
 const authConfig = require('./config/auth_config.json');
-const auth0 = require('./src/auth0');
+const auth0 = require('./src/services/auth0');
 
 // import providers, database, storage, datapipeline layers
-const providers = require('./src/providers');
+const providers = require('./src/providers/providers');
 const dataProviders = providers.providers;
-const database = require('./src/database');
-const storage = require('./src/storage');
-const datapipeline = require('./src/datapipeline');
+const database = require('./src/data/database');
+const cache = require('./src/data/cache');
+const datapipeline = require('./src/data/datapipeline');
 
 // import google provider for checking JWT
-const google = require('./src/google');
+const google = require('./src/services/googleauth');
 
 // get environment (dev or prod) based on environment variable
 const env = process.env.NODE_ENV || 'prod';
@@ -87,7 +87,7 @@ const callDataProvider = async (
   forceRefresh  // flag for whether to force refresh
   ) => {
   try {
-    const data = await storage.getData(userId, provider, entity, params, forceRefresh);
+    const data = await cache.getData(userId, provider, entity, params, forceRefresh);
     if (!data) {
       console.log('callDataProvider: no data returned');
       res.status(200).send({ message: 'no data returned'});
