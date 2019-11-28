@@ -28,42 +28,26 @@ exports.createTopic = async (topicName) => {
   }
 }
 
-// create a subscription on the subscription topic name, with a set 
+exports.createPushSubscription = async (topic, subName, endpoint, serviceAccount) => {
+  // create or retrieve the subscription
+  const subscription = await createSubscription(topic, subName, endpoint, serviceAccount);
+  console.log(`listening on subscription ${subName} on endpoint ${endpoint}`);
+
+  return subscription;
+}
+
+// create a pull subscription on the subscription topic name, with a set 
 // of message handlers passed in as a map.
 // format of messages:
 // {
 //   action: 'action name'    // e.g. 'invoke-load'
 //   ...                      // message specific fields
 // }
-exports.createSubscription = async (topic, subName, handlers) => {
-  // create or retrieve the subscription
-  let subscription;
-  try {
-    [subscription] = await pubsub.createSubscription(topic, subName, 
-      { 
-        ackDeadlineSeconds: ackDeadlineSeconds,
-        flowControl: {
-          maxMessages: maxMessages,
-        } 
-      });
-  } catch (error) {
-    // check for an error indicating that a topic already exists
-    if (error.code === 6) {
-      // use the existing subscription
-      subscription = await pubsub.subscription(subName,
-        { 
-          ackDeadlineSeconds: ackDeadlineSeconds,
-          flowControl: {
-            maxMessages: maxMessages,
-          } 
-        });
-      } else {
-      console.log(`createSubscription caught exception: ${error}`);
-      return null;
-    }
-  }
-  
-  // message handler
+exports.createPullSubscription = async (topic, subName, handlers) => {
+  // create or retrieve the subscription (null endpoint indicates a pull sub)
+  const subscription = await createSubscription(topic, subName, null);
+
+  // define the message handler
   const messageHandler = async (message) => {
     console.log(`Received message ${message.id}:`);
     console.log(`\tData: ${message.data}`);
@@ -91,7 +75,7 @@ exports.createSubscription = async (topic, subName, handlers) => {
     message.ack();
   };
 
-  // error handler
+  // define the error handler
   const errorHandler = async (error) => {
     console.log(`errorHandler: caught error ${error}:`);
   }
@@ -102,6 +86,48 @@ exports.createSubscription = async (topic, subName, handlers) => {
     subscription.on(`error`, errorHandler);
     console.log(`listening on subscription ${subName}`);
   } catch (error) {
-    console.log(`createSubscription: caught exception ${error}`);
+    console.log(`createPullSubscription: caught exception ${error}`);
+  }
+}
+
+// create or retrieve the subscription
+// a non-null endpoint indicates a push subscription
+const createSubscription = async (topic, subName, endpoint, serviceAccount) => {
+  const baseOptions = { 
+    ackDeadlineSeconds: ackDeadlineSeconds,
+    flowControl: {
+      maxMessages: maxMessages,
+    }
+  }
+  const pushOptions = {
+    pushConfig: {
+      pushEndpoint: endpoint,
+      oidcToken: {
+        serviceAccountEmail: serviceAccount
+      }
+    }
+  }
+  const options = endpoint ? { ...baseOptions, ...pushOptions } : baseOptions;
+
+  try {
+    // try to create a new subscription
+    const [subscription] = await pubsub.createSubscription(topic, subName, options);
+    return subscription;
+  } catch (error) {
+    // check for an error indicating that a topic already exists
+    if (error.code === 6) {
+      try {
+        // use the existing subscription
+        const subscription = await pubsub.subscription(subName, options);
+        return subscription;
+      } catch (subError) {
+        console.log(`createSubscription caught exception when trying to obtain existing subscription: ${subError}`);
+        return null;
+      }
+    } else {
+      // this is an unknown error
+      console.log(`createSubscription caught exception: ${error}`);
+      return null;
+    }
   }
 }

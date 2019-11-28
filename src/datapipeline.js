@@ -2,6 +2,7 @@
 // 
 // exports:
 //   createDataPipeline: create pubsub machinery for data pipeine
+//   dataPipelineHandler: event handler for invoking the data pipeline
 
 const database = require('./database');
 const providers = require('./providers');
@@ -17,39 +18,73 @@ exports.createDataPipeline = async (env) => {
     const topicName = `${invokeLoad}-${env}`;
     const subName = `${invokeLoad}-sub-${env}`;
     const jobName = `${invokeLoad}-job-${env}`;
+    const endpoint = `https://saasmaster-api-rlxsdnkh6a-uc.a.run.app/${invokeLoad}`;
+    const serviceAccount = 'cloud-run-pubsub-invoker@saasmaster.iam.gserviceaccount.com';
 
-    // create or retrieve topic
-    const topic = await pubsub.createTopic(topicName);
-    if (!topic) {
-      console.log(`createDataPipeline: could not create or find topic ${topicName}`);
-      return;
+    // get the data pipeline system info object
+    const dataPipelineObject = await database.getUserData(database.systemInfo, database.dataPipelineSection);
+
+    // handle prod environent
+    if (env === 'prod') {
+      if (dataPipelineObject.topicName !== topicName ||
+          dataPipelineObject.subName !== subName ||
+          dataPipelineObject.jobName !== jobName) {
+
+        // create or get a reference to the topic
+        const topic = await pubsub.createTopic(topicName);
+        if (!topic) {
+          console.log(`createDataPipeline: could not create or find topic ${topicName}`);
+          return;
+        }
+
+        dataPipelineObject.topicName = topicName;
+    
+        // set up a push subscription for the production environment
+        await pubsub.createPushSubscription(topic, subName, endpoint, serviceAccount);
+        dataPipelineObject.subName = subName;
+
+        // create scheduler job
+        await scheduler.createPubSubJob(jobName, topic.name);
+        dataPipelineObject.jobName = jobName;
+      }
     }
 
-    // set up handlers
-    const handlers = {};
-    handlers[invokeLoad] = dataPipelineHandler;
+    // handle prod environent
+    if (env === 'dev') {
+      // create or get a reference to the topic
+      const topic = await pubsub.createTopic(topicName);
+      if (!topic) {
+        console.log(`createDataPipeline: could not create or find topic ${topicName}`);
+        return;
+      }
 
-    // create subscription
-    await pubsub.createSubscription(topic, subName, handlers)
+      dataPipelineObject.topicName = topicName;
 
-    // create scheduler job
-    await scheduler.createPubSubJob(jobName, topic.name);
-      
+      const handlers = {};
+      handlers[invokeLoad] = exports.dataPipelineHandler;
+
+      // set up a pull subscription for the dev environment
+      await pubsub.createPullSubscription(topic, subName, handlers);
+      dataPipelineObject.subName = subName;
+
+      // create the scheduler job if it doesn't exist yet
+      if (dataPipelineObject.jobName !== jobName) {
+        // create scheduler job
+        await scheduler.createPubSubJob(jobName, topic.name);
+        dataPipelineObject.jobName = jobName;
+      }
+    }
+
+    // store the data pipeline system info object
+    await database.setUserData(database.systemInfo, database.dataPipelineSection, dataPipelineObject);
+
   } catch (error) {
     console.log(`createDataPipeline: caught exception: ${error}`);
   }
 }
 
-// return true if the timestamp is older than 59 minutes ago
-const isStale = (timestamp) => {
-  // compute the current timestamp and an hour ago
-  const now = new Date().getTime();
-  const min59 = 59 * 60000;
-  return (now - timestamp > min59);
-}
-
 // pubsub handler for invoking the data pipeline
-const dataPipelineHandler = async (data) => {
+exports.dataPipelineHandler = async (data) => {
   try {
     // compute the current timestamp and an hour ago
     const now = new Date().getTime();
@@ -145,3 +180,10 @@ const invokeDataPipeline = async () => {
   }
 }
 
+// return true if the timestamp is older than 59 minutes ago
+const isStale = (timestamp) => {
+  // compute the current timestamp and an hour ago
+  const now = new Date().getTime();
+  const min59 = 59 * 60000;
+  return (now - timestamp > min59);
+}

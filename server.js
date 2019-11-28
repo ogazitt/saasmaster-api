@@ -16,6 +16,9 @@ const database = require('./src/database');
 const storage = require('./src/storage');
 const datapipeline = require('./src/datapipeline');
 
+// import google provider for checking JWT
+const google = require('./src/google');
+
 // get environment (dev or prod) based on environment variable
 const env = process.env.NODE_ENV || 'prod';
 console.log('environment:', env);
@@ -39,7 +42,7 @@ app.use(cors());
 
 // Create middleware for checking the JWT
 const checkJwt = jwt({
-  // Dynamically provide a signing key based on the kid in the header and the singing keys provided by the JWKS endpoint
+  // Dynamically provide a signing key based on the kid in the header and the signing keys provided by the JWKS endpoint
   secret: jwksRsa.expressJwtSecret({
     cache: true,
     rateLimit: true,
@@ -238,6 +241,22 @@ app.post('/link', checkJwt, function(req, res){
   res.status(200).send({ message: 'Unknown action'});
 });
 
+// invoke-load endpoint: this is only called from the pubsub push subscription
+app.post('/invoke-load', function(req, res){
+//app.post('/invoke-load', checkJwt, function(req, res){
+  console.log('POST /invoke-load');
+  const auth = req.headers.authorization;
+  const [, token] = auth.match(/Bearer (.*)/);
+
+  // validate the authorization bearer JWT
+  if (google.validateJwt(token)) {
+    // invoke the data pipeline event handler
+    datapipeline.dataPipelineHandler(req.body);
+  }
+
+  res.status(204).send();
+});
+
 // Create timesheets API endpoint
 app.post('/timesheets', checkJwt, jwtAuthz(['create:timesheets']), function(req, res){
   console.log('post api');
@@ -256,7 +275,6 @@ app.post('/timesheets', checkJwt, jwtAuthz(['create:timesheets']), function(req,
 app.get('/*', function(req, res) {
   res.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
-
 
 // Launch the API Server at PORT, or default port 8080
 const port = process.env.PORT || 8080;

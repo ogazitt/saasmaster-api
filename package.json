@@ -3,14 +3,18 @@
   "version": "0.1.0",
   "description": "API for SaaSMaster app",
   "main": "server.js",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/ogazitt/saasmaster-api.git"
+  },
   "scripts": {
     "start": "NODE_ENV=dev node server.js",
     "start:dev": "NODE_ENV=dev node server.js",
     "start:prod": "NODE_ENV=prod node server.js",
     "build-spa": "cd ../saasmaster && npm run build",
     "copy": "cp -r ../saasmaster/build/* build",
-    "build": "gcloud builds submit --tag gcr.io/saasmaster/saasmaster-api",
-    "deploy": "gcloud beta run deploy saasmaster-api --image gcr.io/saasmaster/saasmaster-api --platform managed",
+    "build": "scripts/build.sh",
+    "deploy": "scripts/deploy.sh",
     "push": "npm run build-spa && npm run copy && npm run build && npm run deploy",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -27,6 +31,7 @@
     "express-jwt": "^5.3.1",
     "express-jwt-authz": "^2.3.1",
     "facebook-nodejs-business-sdk": "^5.0.1",
+    "google-auth-library": "^5.5.1",
     "jwks-rsa": "^1.6.0",
     "oauth-signature": "^1.5.0",
     "twitter": "^1.7.1"

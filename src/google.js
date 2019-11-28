@@ -4,11 +4,15 @@
 // getGoogleAccessToken(userId): abstracts all logic to retrieve a google access token
 // getCalendarData(userId): get calendar data for the userId
 // getGoogleLocations(userId): get google mybusiness location data
+// validateJwt(token): validate bearer token provided by google cloud
 
 const axios = require('axios');
 const database = require('./database');
 const authConfig = require('../config/auth_config.json');
 const auth0 = require('./auth0');
+
+const { OAuth2Client } = require('google-auth-library');
+const authClient = new OAuth2Client();
 
 // api's defined by this provider
 // the actual function is added after it is defined below
@@ -121,6 +125,21 @@ exports.apis.getGoogleLocations.func = async ([userId]) => {
     await error.response;
     console.log(`getGoogleLocations: caught exception: ${error}`);
     return null;
+  }
+};
+
+exports.validateJwt = async (token) => {
+  try {
+    await authClient.verifyIdToken({
+      idToken: token,
+      audience: 'https://saasmaster-api-rlxsdnkh6a-uc.a.run.app/invoke-load',
+    });
+
+    // if the call succeeds, validation passed
+    return true;
+  } catch (error) {
+    console.log(`validateJwt: caught exception: ${error}`);
+    return false;
   }
 };
 
