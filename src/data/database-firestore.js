@@ -74,7 +74,7 @@ exports.storeBatch = async (userId, collection, data, key) => {
 
 // query for documents in a collection optionally based on a field value
 // return the results as an array of objects
-exports.query = async (userId, collection, field, value) => {
+exports.query = async (userId, collection, invokeInfo, field, value) => {
   try {
     const col = users.doc(userId).collection(collection);
     let snapshot;
@@ -87,8 +87,20 @@ exports.query = async (userId, collection, field, value) => {
       snapshot = await col.get();
     }
 
-    // get an array with all the data from the documents, except __invoke_info
-    const docArray = snapshot.docs.filter(item => item.id != '__invoke_info');
+    // get list of documents in snapshot, except __invoke_info
+    const docArray = snapshot.docs.filter(item => item.id !== '__invoke_info');
+
+    // create a combined array with an entry from each document
+/*
+    const array = docArray.map(doc => {
+      const id = doc.id;
+      const data = doc.data();
+
+      // combine document data with enriched data in invokeInfo document
+      const enrichedData = invokeInfo[id];
+      return { ...data, ...enrichedData };
+    });
+    */
     const array = docArray.map(doc => doc.data());
 
     // return results

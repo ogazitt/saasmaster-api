@@ -64,8 +64,8 @@ exports.storeBatch = async (userId, collection, data, key) => {
 
 // query for documents in a collection optionally based on a field value
 // return the results as an array of objects
-exports.query = async (userId, collection, field = null, value = null) => {
-  return await provider.query(userId, collection, field, value);
+exports.query = async (userId, collection, invokeInfo, field = null, value = null) => {
+  return await provider.query(userId, collection, invokeInfo, field, value);
 }
 
 // get all users

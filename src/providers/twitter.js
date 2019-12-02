@@ -16,7 +16,8 @@ exports.apis = {
     provider: 'twitter',
     entity: 'twitter:mentions',
     arrayKey: null,
-    itemKey: 'id_str'
+    itemKey: 'id_str',
+    sentimentTextField: 'text'
   },
 };
 
