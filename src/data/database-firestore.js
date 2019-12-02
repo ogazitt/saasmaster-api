@@ -55,9 +55,13 @@ exports.storeBatch = async (userId, collection, data, key) => {
     await Promise.all(data.map(async (element) => {
       const keyString = '' + key;  // ensure key is a string
       const name = element[keyString];
-      const doc = coll.doc(name);
+      const docName = coll.doc(name);
       try {
-        await doc.set(element);
+        // store the document only if it doesn't yet exist
+        const doc = await docName.get();
+        if (!doc.exists) {
+          await doc.set(element);
+        }
       } catch (error) {
         console.log(`storeBatch: caught exception ${error} while storing ${name}`);
       }

@@ -16,6 +16,8 @@ const database = require('./src/data/database');
 const cache = require('./src/data/cache');
 const datapipeline = require('./src/data/datapipeline');
 
+const sentiment = require('./src/services/sentiment');
+
 // import google provider for checking JWT
 const google = require('./src/services/googleauth');
 
@@ -243,20 +245,36 @@ app.post('/link', checkJwt, function(req, res){
 
 // invoke-load endpoint: this is only called from the pubsub push subscription
 app.post('/invoke-load', function(req, res){
-//app.post('/invoke-load', checkJwt, function(req, res){
-  console.log('POST /invoke-load');
-  const auth = req.headers.authorization;
-  const [, token] = auth.match(/Bearer (.*)/);
+  //app.post('/invoke-load', checkJwt, function(req, res){
+    console.log('POST /invoke-load');
+    const auth = req.headers.authorization;
+    const [, token] = auth.match(/Bearer (.*)/);
+  
+    // validate the authorization bearer JWT
+    if (google.validateJwt(token)) {
+      // invoke the data pipeline event handler
+      datapipeline.dataPipelineHandler(req.body);
+    }
+  
+    res.status(204).send();
+  });
 
-  // validate the authorization bearer JWT
-  if (google.validateJwt(token)) {
-    // invoke the data pipeline event handler
-    datapipeline.dataPipelineHandler(req.body);
-  }
+  // sentiment endpoint: test sentiment feature
+app.get('/sentiment', function(req, res){
+    console.log('GET /sentiment');
+    const text = req.query.text;
+    const analyze = async (text) => {
+      try {
+        const result = await sentiment.analyze(text);
+        res.status(200).send({ sentiment: result });
+      } catch (error) {
+        res.status(200).send({ error: error });
+      }
+    };
 
-  res.status(204).send();
-});
-
+    analyze(text);
+  });
+  
 // Create timesheets API endpoint
 app.post('/timesheets', checkJwt, jwtAuthz(['create:timesheets']), function(req, res){
   console.log('post api');
