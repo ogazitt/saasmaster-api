@@ -19,13 +19,6 @@ exports.analyze = async (text) => {
   try {
     const [result] = await client.analyzeSentiment({document});
     return result.documentSentiment.score;
-/*  // analyze sentences in a batch
-    if (!result || !result.sentences) {
-      return null;
-    }
-    const sentimentArray = result.sentences.map(s => s.sentiment.score);
-    return sentimentArray;
-*/
   } catch (error) {
     console.log(`analyze: caught exception: ${error}`);
   }

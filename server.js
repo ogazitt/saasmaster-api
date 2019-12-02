@@ -13,10 +13,8 @@ const auth0 = require('./src/services/auth0');
 const providers = require('./src/providers/providers');
 const dataProviders = providers.providers;
 const database = require('./src/data/database');
-const cache = require('./src/data/cache');
+const dal = require('./src/data/dal');
 const datapipeline = require('./src/data/datapipeline');
-
-const sentiment = require('./src/services/sentiment');
 
 // import google provider for checking JWT
 const google = require('./src/services/googleauth');
@@ -73,14 +71,15 @@ app.get('/timesheets', checkJwt, jwtAuthz(['read:timesheets']), function(req, re
 });
 
 // async function to retrieve provider data (either from storage cache
-//   or directly from provider), update cache, and return the result
+// or directly from provider), update cache, and return the result
 //   
 //   res: response object
+//   userId: userId for this request
 //   provider: data provider to call
 //   entity: entity to retrieve
-//   forceRefresh: whether to force re-loading the data from provider 
 //   params: extra parameters to pass into the data provider function
-const callDataProvider = async (
+//   forceRefresh: whether to force re-loading the data from provider 
+const getData = async (
   res,          // response object
   userId,       // userId for this request
   provider,     // provider object
@@ -89,7 +88,8 @@ const callDataProvider = async (
   forceRefresh  // flag for whether to force refresh
   ) => {
   try {
-    const data = await cache.getData(userId, provider, entity, params, forceRefresh);
+    // retrieve the data from the data access layer
+    const data = await dal.getData(userId, provider, entity, params, forceRefresh);
     if (!data) {
       console.log('callDataProvider: no data returned');
       res.status(200).send({ message: 'no data returned'});
@@ -115,7 +115,7 @@ app.get('/google', checkJwt, function(req, res){
 
   console.log(`/google: user: ${userId}; email: ${email}`);
   
-  callDataProvider(
+  getData(
     res, 
     userId, 
     dataProviders['google-oauth2'].getCalendarData, 
@@ -131,7 +131,7 @@ app.get('/facebook', checkJwt, function(req, res){
   const refresh = req.query.refresh || false;
   console.log(`/facebook: user: ${userId}; email: ${email}`);
 
-  callDataProvider(
+  getData(
     res, 
     userId, 
     dataProviders.facebook.getPages, 
@@ -149,7 +149,7 @@ app.get('/facebook/reviews/:pageId', checkJwt, function(req, res){
   const accessToken = req.headers.token;
   console.log(`/facebook/reviews/${pageId}: user: ${userId}; email: ${email}`);
 
-  callDataProvider(
+  getData(
     res, 
     userId, 
     dataProviders.facebook.getPageReviews, 
@@ -165,7 +165,7 @@ app.get('/twitter', checkJwt, function(req, res){
   const refresh = req.query.refresh || false;
   console.log(`/twitter: user: ${userId}; email: ${email}`);
 
-  callDataProvider(
+  getData(
     res, 
     userId, 
     dataProviders.twitter.getTweets, 
@@ -246,34 +246,18 @@ app.post('/link', checkJwt, function(req, res){
 // invoke-load endpoint: this is only called from the pubsub push subscription
 app.post('/invoke-load', function(req, res){
   //app.post('/invoke-load', checkJwt, function(req, res){
-    console.log('POST /invoke-load');
-    const auth = req.headers.authorization;
-    const [, token] = auth.match(/Bearer (.*)/);
-  
-    // validate the authorization bearer JWT
-    if (google.validateJwt(token)) {
-      // invoke the data pipeline event handler
-      datapipeline.dataPipelineHandler(req.body);
-    }
-  
-    res.status(204).send();
-  });
+  console.log('POST /invoke-load');
+  const auth = req.headers.authorization;
+  const [, token] = auth.match(/Bearer (.*)/);
 
-  // sentiment endpoint: test sentiment feature
-app.get('/sentiment', function(req, res){
-    console.log('GET /sentiment');
-    const text = req.query.text;
-    const analyze = async (text) => {
-      try {
-        const result = await sentiment.analyze(text);
-        res.status(200).send({ sentiment: result });
-      } catch (error) {
-        res.status(200).send({ error: error });
-      }
-    };
+  // validate the authorization bearer JWT
+  if (google.validateJwt(token)) {
+    // invoke the data pipeline event handler
+    datapipeline.dataPipelineHandler(req.body);
+  }
 
-    analyze(text);
-  });
+  res.status(204).send();
+});
   
 // Create timesheets API endpoint
 app.post('/timesheets', checkJwt, jwtAuthz(['create:timesheets']), function(req, res){

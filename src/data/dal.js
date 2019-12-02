@@ -1,11 +1,9 @@
-// cache layer for caching entities in the database
+// data access layer for abstracting the retrieval of entities
 // 
 // exports:
-//   getData: retrieve an entity either from cache, or from data source and cache it
-//   storeData: store the entity in the cache
+//   getData: retrieve an entity and its enriched data - from cache or from the provider
 
 const database = require('./database');
-const callProvider = require('../providers/provider');
 const sentiment = require('../services/sentiment');
 
 exports.getData = async (userId, provider, entity, params, forceRefresh = false) => {
@@ -39,7 +37,7 @@ exports.getData = async (userId, provider, entity, params, forceRefresh = false)
     console.log(`getData: retrieving ${userId}:${entityName} from provider`);
 
     // retrieve data from provider
-    const data = await callProvider.callProvider(provider, params);
+    const data = await callProvider(provider, params);
     if (!data) {
       return null;
     }
@@ -48,7 +46,7 @@ exports.getData = async (userId, provider, entity, params, forceRefresh = false)
     await retrieveSentimentData(provider, data, invokeInfo);
 
     // store the data (including invokeInfo document), but do NOT await the operation
-    exports.storeData(userId, provider, entityName, params, data, invokeInfo);
+    storeData(userId, provider, entityName, params, data, invokeInfo);
 
     // add any sentiment information to the records to return
     const enrichedData = enrichData(provider, data, invokeInfo);
@@ -59,7 +57,36 @@ exports.getData = async (userId, provider, entity, params, forceRefresh = false)
   }
 }
 
-exports.storeData = async (userId, provider, entity, params, data, invokeInfo) => {
+// call the provider to retrieve the entity
+const callProvider = async (provider, params) => {
+  try {
+    const func = provider && provider.func;
+    // basic error checking
+    if (!func) {
+      console.log('callProvider: failed to validate provider function');
+      return null;
+    }
+  
+    // retrieve data from provider
+    const data = await func(params);
+    if (!data) {
+      console.log(`callProvider: no data returned from ${provider.provider}:${provider.name}`);
+      return null;
+    }
+
+    // get array of returned data
+    const array = provider.arrayKey ? data[provider.arrayKey] : data;
+
+    // return the data
+    return array;
+  } catch (error) {
+    console.log(`callProvider: caught exception: ${error}`);
+    return null;
+  }
+}
+
+// store the retrieved data along with invocation information in the database
+const storeData = async (userId, provider, entity, params, data, invokeInfo) => {
   try {
     // add invocation information to invokeInfo document
     invokeInfo.provider = provider.provider;
@@ -78,8 +105,10 @@ exports.storeData = async (userId, provider, entity, params, data, invokeInfo) =
   }
 }
 
+// retrieve the sentiment score associated with the data
 const retrieveSentimentData = async (provider, data, invokeInfo) => {
   try {
+    // determine whether there is a sentiment text field
     const sentimentTextField = provider.sentimentTextField;
     const itemKeyField = provider.itemKey;
     if (!sentimentTextField) {
@@ -96,6 +125,7 @@ const retrieveSentimentData = async (provider, data, invokeInfo) => {
       if (!sentimentScore) {
         // call the sentiment analysis API
         const score = await sentiment.analyze(text);
+        console.log(`retrieved sentiment score ${score} for item ${id}`);
 
         // store the sentiment score returend
         invokeInfoForElement.__sentimentScore = score;
@@ -108,6 +138,7 @@ const retrieveSentimentData = async (provider, data, invokeInfo) => {
   }
 }
 
+// enrich the returned dataset with any additional information stored in invokeInfo doc
 const enrichData = (provider, data, invokeInfo) => {
   try {
     const itemKeyField = provider.itemKey;
@@ -123,7 +154,7 @@ const enrichData = (provider, data, invokeInfo) => {
     // return the array containing the enriched data
     return array;
   } catch (error) {
-    console.log(`retrieveSentimentData: caught exception: ${error}`);
+    console.log(`enrichData: caught exception: ${error}`);
     return null;
   }
 }

@@ -7,8 +7,7 @@
 const database = require('./database');
 const providers = require('../providers/providers');
 const dataProviders = providers.providers;
-const callProvider = require('../providers/provider');
-const cache = require('./cache');
+const dal = require('./dal');
 const pubsub = require('../services/pubsub');
 const scheduler = require('../services/scheduler');
 
@@ -137,12 +136,6 @@ const invokeDataPipeline = async () => {
         await Promise.all(collections.map(async collection => {
           // retrieve the __invoke_info document for the collection
           const invokeInfo = await database.getDocument(userId, collection, database.invokeInfo);
-          const lastRetrieved = invokeInfo.lastRetrieved || now - hr1;  // if the timestamp doesn't exist, set it to 1 hour ago
-
-          // if the collection isn't stale, skip retrieval
-          if (!isStale(lastRetrieved)) {
-            return;
-          }
 
           // validate invocation info
           if (invokeInfo && invokeInfo.provider && invokeInfo.name) {
@@ -152,23 +145,10 @@ const invokeDataPipeline = async () => {
             provider = providerObject && providerObject[funcName],
             params = invokeInfo.params;
 
-            // utilize the cache's getData mechanism to re-retrieve object
-            await cache.getData(userId, provider, collection, params);
-            /*
-
-            // validate more invocation info
-            if (userId && provider && collection && params) {
-              // call the provider and retrieve the data
-              const data = await callProvider.callProvider(provider, params);
-
-              if (data) {
-                // await the storage of the data 
-                await cache.storeData(userId, provider, collection, params, data);
-                console.log(`retrieved and stored ${userId}:${collection}`);                
-              }
-            }
-          */
-        }
+            // utilize the data access layer's getData mechanism to re-retrieve object
+            // force the refresh using the forceRefresh = true flag
+            await dal.getData(userId, provider, collection, params, true);
+          }
         }));
       } catch (error) {
         console.log(`invokeDataPipeline: user ${userId} caught exception: ${error}`);        

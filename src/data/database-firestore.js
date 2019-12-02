@@ -91,16 +91,6 @@ exports.query = async (userId, collection, invokeInfo, field, value) => {
     const docArray = snapshot.docs.filter(item => item.id !== '__invoke_info');
 
     // create a combined array with an entry from each document
-/*
-    const array = docArray.map(doc => {
-      const id = doc.id;
-      const data = doc.data();
-
-      // combine document data with enriched data in invokeInfo document
-      const enrichedData = invokeInfo[id];
-      return { ...data, ...enrichedData };
-    });
-    */
     const array = docArray.map(doc => doc.data());
 
     // return results
