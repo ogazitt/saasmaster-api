@@ -108,7 +108,7 @@ const retrieveSentimentData = async (provider, data, invokeInfo) => {
   }
 }
 
-const enrichData = async (provider, data, invokeInfo) => {
+const enrichData = (provider, data, invokeInfo) => {
   try {
     const itemKeyField = provider.itemKey;
     // create a combined array with an entry from each document

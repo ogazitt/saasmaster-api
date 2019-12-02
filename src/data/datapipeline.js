@@ -152,6 +152,10 @@ const invokeDataPipeline = async () => {
             provider = providerObject && providerObject[funcName],
             params = invokeInfo.params;
 
+            // utilize the cache's getData mechanism to re-retrieve object
+            await cache.getData(userId, provider, collection, params);
+            /*
+
             // validate more invocation info
             if (userId && provider && collection && params) {
               // call the provider and retrieve the data
@@ -163,7 +167,8 @@ const invokeDataPipeline = async () => {
                 console.log(`retrieved and stored ${userId}:${collection}`);                
               }
             }
-          }
+          */
+        }
         }));
       } catch (error) {
         console.log(`invokeDataPipeline: user ${userId} caught exception: ${error}`);        
