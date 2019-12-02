@@ -122,7 +122,7 @@ const retrieveSentimentData = async (provider, data, invokeInfo) => {
       const text = element[sentimentTextField];
       const invokeInfoForElement = invokeInfo[id] || {};
       const sentimentScore = invokeInfoForElement.__sentimentScore;
-      if (!sentimentScore) {
+      if (sentimentScore === undefined) {
         // call the sentiment analysis API
         const score = await sentiment.analyze(text);
         console.log(`retrieved sentiment score ${score} for item ${id}`);
