@@ -2,7 +2,7 @@
 # SaaSMaster-API
 ## Master your online reputation
 
-This repository contains the API for the SaaSMaster single-page applciation.  
+This repository contains the API for the SaaSMaster single-page application.  
 
 SaaSMaster-API utilizes the express web server, and relies on [Auth0](https://auth0.com) for authentication and authorization.
 
@@ -13,8 +13,8 @@ Google Cloud Scheduler, and Google Cloud Natural Language API's.
 
 ### `npm start` (or `npm run start:dev`)
 
-Runs the backend with NODE_ENV=dev, which invokes the dev environment.  
-This will append "-dev" to the Firebase collection (`users-dev`), the pubsub topic (`invoke-load-dev`), etc.
+Runs the backend with NODE_ENV=dev, which invokes the dev environment.  This will append "-dev" to the Firebase collection
+(`users-dev`), the pubsub topic (`invoke-load-dev`), etc.
 
 The pub-sub subscription will run in pull mode, and is invoked by the scheduler every hour on the hour.
 
@@ -22,9 +22,8 @@ The express webserver will default to listening on port 8080.  Override with POR
 
 ### `npm run start:prod`
 
-Runs the backend with NODE_ENV=prod, which invokes the production environment.
-This will choose the main Firebase collection (`users`), and append "-prod" to various resources such as 
-the pubsub topic (`invoke-load-prod`), etc.  
+Runs the backend with NODE_ENV=prod, which invokes the production environment. This will choose the main Firebase 
+collection (`users`), and append "-prod" to various resources such as the pubsub topic (`invoke-load-prod`), etc.  
 
 The pub-sub subscription will run in push mode, calling the /invoke-load API, and is invoked by the scheduler 
 every hour on the hour.
@@ -72,8 +71,8 @@ consumers can import all providers by importing `providers.js`.
 
 ### `src/services`
 
-Contains wrappers around all of the services used: Auth0, Facebook, Google, Twitter, 
-and GCP (pubsub, scheduler, sentiment servcies).
+Contains wrappers around all of the services used: Auth0, Facebook, Google, Twitter, and GCP (pubsub, scheduler, 
+sentiment servcies).
 
 ### `utils`
 
