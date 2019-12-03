@@ -4,7 +4,10 @@
 
 This repository contains the API for the SaaSMaster single-page applciation.  
 
-SaaSMaster-API is utilizes the express web server.
+SaaSMaster-API utilizes the express web server, and relies on [Auth0](https://auth0.com) for authentication and authorization.
+
+It is a Google Cloud Platform app, with dependencies on Google Cloud Build, Google Cloud Run, Google Cloud Pubsub, 
+Google Cloud Scheduler, and Google Cloud Natural Language API's. 
 
 ## Available scripts
 
@@ -13,7 +16,7 @@ SaaSMaster-API is utilizes the express web server.
 Runs the backend with NODE_ENV=dev, which invokes the dev environment.  
 This will append "-dev" to the Firebase collection (`users-dev`), the pubsub topic (`invoke-load-dev`), etc.
 
-The pub-sub subscription will run in pull mode.
+The pub-sub subscription will run in pull mode, and is invoked by the scheduler every hour on the hour.
 
 The express webserver will default to listening on port 8080.  Override with PORT=xxxx variable.
 
@@ -23,7 +26,8 @@ Runs the backend with NODE_ENV=prod, which invokes the production environment.
 This will choose the main Firebase collection (`users`), and append "-prod" to various resources such as 
 the pubsub topic (`invoke-load-prod`), etc.  
 
-The pub-sub subscription will run in push mode, calling the /invoke-load API.
+The pub-sub subscription will run in push mode, calling the /invoke-load API, and is invoked by the scheduler 
+every hour on the hour.
 
 The express webserver will default to listening on port 8080.  Override with PORT=xxxx variable.
 
@@ -35,7 +39,7 @@ the saasmaster-api project.
 
 ### `npm run build` and `npm run deploy`
 
-These will build the Docker container for the API (including the SPA) on Google Cloud Build, and deploy it to 
+These will build the Docker container for the API (including the SPA) using Google Cloud Build, and deploy it to 
 Google Cloud Run.
 
 ### `npm run push` 
@@ -50,25 +54,23 @@ The app is bootstrapped out of `server.js`, which pulls in all other source depe
 ### `config`
 
 Contains all the config for the project.  These files aren't committed to source control since they contain secrets.
-The API expects an `auth_config.json` file for application keys and secret keys for Auth0, Google, Facebook, Twitter, and a 
+The API expects an `auth_config.json` file for application keys and secret keys for Auth0, Google, Facebook, Twitter; and a 
 `firebase_config.json` file for the Google Cloud Platform service account used with this application.
 
 ### `scripts`
 
 Contains scripts to build and deploy the app to GCP, as well as to set up the IAM rules for the app.
 
-### `src`
-
-#### `data`
+### `src/data`
 
 Contains the data access layer, database abstraction layer, and data pipeline
 
-#### `providers`
+### `src/providers`
 
 Contains the provider implementations for the supported social media accounts.  `providers.js` pulls these all together and 
 consumers can import all providers by importing `providers.js`.
 
-#### `services`
+### `src/services`
 
 Contains wrappers around all of the services used: Auth0, Facebook, Google, Twitter, 
 and GCP (pubsub, scheduler, sentiment servcies).
