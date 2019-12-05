@@ -38,8 +38,7 @@ exports.getDocument = async (userId, collection, name) => {
 exports.storeDocument = async (userId, collection, name, data) => {
   try {
     const doc = users.doc(userId).collection(collection).doc(name);
-    // note - NO await - to refrain from waiting on the op
-    doc.set(data);
+    await doc.set(data);
   } catch (error) {
     console.log(`storeDocument: caught exception: ${error}`);
     return null;

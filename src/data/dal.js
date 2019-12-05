@@ -30,7 +30,7 @@ exports.getData = async (userId, provider, entity, params, forceRefresh = false)
         return null;
       }
       // add any sentiment information to the records to return
-      const enrichedData = enrichData(provider, data, invokeInfo);
+      const enrichedData = mergeMetadataWithData(provider, data, invokeInfo);
       return enrichedData;        
     }
 
@@ -43,16 +43,45 @@ exports.getData = async (userId, provider, entity, params, forceRefresh = false)
     }
 
     // perform sentiment analysis for new data records, storing results in invokeInfo
-    await retrieveSentimentData(provider, data, invokeInfo);
+    await retrieveSentimentMetadata(provider, data, invokeInfo);
 
     // store the data (including invokeInfo document), but do NOT await the operation
     storeData(userId, provider, entityName, params, data, invokeInfo);
 
-    // add any sentiment information to the records to return
-    const enrichedData = enrichData(provider, data, invokeInfo);
+    // merge any metadata information to the records to return
+    const enrichedData = mergeMetadataWithData(provider, data, invokeInfo);
     return enrichedData;      
   } catch (error) {
     console.log(`getData: caught exception: ${error}`);
+    return null;
+  }
+}
+
+exports.storeMetadata = async (userId, provider, entity, metadata) => {
+  try {
+    const providerName = provider && provider.provider;
+    const entityName = entity || provider.entity;
+    // basic error checking
+    if (!providerName || !entityName) {
+      console.log(`storeMetadata: failed to validate provider ${providerName} / entity ${entityName}`);
+      return null;
+    }
+
+    // get the __invoke_info document
+    const invokeInfo = await database.getDocument(userId, entityName, database.invokeInfo);
+    if (!invokeInfo) {
+      console.log(`storeMetadata: could not find invokeInfo doc for ${entity}`);
+      return;
+    }
+
+    // merge the current data with the new metadata
+    const mergedData = deepMerge(invokeInfo, metadata);
+
+    // store the resulting invokeInfo document
+    await database.storeDocument(userId, entityName, database.invokeInfo, mergedData);
+
+  } catch (error) {
+    console.log(`storeMetadata: caught exception: ${error}`);
     return null;
   }
 }
@@ -106,7 +135,7 @@ const storeData = async (userId, provider, entity, params, data, invokeInfo) => 
 }
 
 // retrieve the sentiment score associated with the data
-const retrieveSentimentData = async (provider, data, invokeInfo) => {
+const retrieveSentimentMetadata = async (provider, data, invokeInfo) => {
   try {
     // determine whether there is a sentiment text field
     const sentimentTextField = provider.sentimentTextField;
@@ -139,7 +168,7 @@ const retrieveSentimentData = async (provider, data, invokeInfo) => {
 }
 
 // enrich the returned dataset with any additional information stored in invokeInfo doc
-const enrichData = (provider, data, invokeInfo) => {
+const mergeMetadataWithData = (provider, data, invokeInfo) => {
   try {
     const itemKeyField = provider.itemKey;
     // create a combined array with an entry from each document
@@ -157,4 +186,12 @@ const enrichData = (provider, data, invokeInfo) => {
     console.log(`enrichData: caught exception: ${error}`);
     return null;
   }
+}
+
+const deepMerge = (data1, data2) => {
+  const newObj = { ...data1 };
+  for (const key of Object.keys(data2)) {
+    newObj[key] = { ...newObj[key], ...data2[key] };
+  }
+  return newObj;
 }

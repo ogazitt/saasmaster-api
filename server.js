@@ -91,7 +91,7 @@ const getData = async (
     // retrieve the data from the data access layer
     const data = await dal.getData(userId, provider, entity, params, forceRefresh);
     if (!data) {
-      console.log('callDataProvider: no data returned');
+      console.log('getData: no data returned');
       res.status(200).send({ message: 'no data returned'});
       return;
     }
@@ -101,7 +101,38 @@ const getData = async (
     return;
   } catch (error) {
     await error.response;
-    console.log(`callDataProvider: caught exception: ${error}`);
+    console.log(`getData: caught exception: ${error}`);
+    res.status(200).send({ message: error });
+    return;
+  }
+};
+
+// store metadata associated with a set of data objects
+//   data is in the following format:
+//     {
+//       key1: { meta1: value1, meta2: value2, ... },
+//       key2: { meta1: value1, meta2: value2, ... },
+//     }
+const storeMetadata = async (
+  res,          // response object
+  userId,       // userId for this request
+  provider,     // provider object
+  entity,       // entity to store metadata for
+  data          // request data
+  ) => {
+  try {
+    // use the data access layer to store the metadata
+    await dal.storeMetadata(userId, provider, entity, data);
+
+    // return the refreshed data
+    const newData = await dal.getData(userId, provider, entity, [userId]);
+
+    // SUCCESS! send a success code back to client, with the new data
+    res.status(200).send(newData);
+    return;
+  } catch (error) {
+    await error.response;
+    console.log(`storeMetadata: caught exception: ${error}`);
     res.status(200).send({ message: error });
     return;
   }
@@ -172,6 +203,47 @@ app.get('/twitter', checkJwt, function(req, res){
     null,     // default entity name
     [userId], // parameter array
     refresh);
+});
+
+// Post twitter mentions API - takes multiple tweet ids in the body and 
+// associates metadata with them
+// Data payload format:
+//     {
+//       key1: { meta1: value1, meta2: value2, ... },
+//       key2: { meta1: value1, meta2: value2, ... },
+//     }
+app.post('/twitter/mentions', checkJwt, function (req, res){
+  const email = req.user[`${authConfig.audience}/email`];
+  const userId = req.user['sub'];
+  console.log(`POST /twitter/mentions: user: ${userId}; email: ${email}`);
+
+  storeMetadata(
+    res,
+    userId,
+    dataProviders.twitter.getTweets,
+    null,     // default entity name
+    req.body);
+});
+
+// Post twitter mentions API - takes a tweet id as a parameter,
+// and associates the metdata found in the body 
+// Data payload format:
+//   { meta1: value1, meta2: value2, ... }
+app.post('/twitter/mentions/:tweetId', checkJwt, function (req, res){
+  const email = req.user[`${authConfig.audience}/email`];
+  const userId = req.user['sub'];
+  const tweetId = req.params.tweetId;
+  console.log(`/twitter/mentions/${tweetId}: user: ${userId}; email: ${email}`);
+
+  // construct the data object in the appropriate format
+  const dataObj = {};
+  dataObj[tweetId] = req.body;
+
+  storeMetadata(
+    res,
+    userId,
+    dataProviders.twitter.getTweets,
+    dataObj);
 });
 
 // Get connections API endpoint
