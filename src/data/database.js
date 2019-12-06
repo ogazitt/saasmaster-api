@@ -108,16 +108,16 @@ exports.tokenExpired = (user) => {
 exports.connections = async (userId) => {
   const connectionList = {
     'google-oauth2': {
-      image: 'google-logo.png'
+      image: '/google-logo.png'
     },
     facebook: {
-      image: 'facebook-logo.png'
+      image: '/facebook-logo.png'
     },
     instagram: {
-      image: 'instagram-logo.png'
+      image: '/instagram-logo.png'
     },
     twitter: {
-      image: 'twitter-logo.png'
+      image: '/twitter-logo.png'
     }
   };
 
