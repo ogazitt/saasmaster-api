@@ -96,7 +96,8 @@ exports.linkAccounts = async (primaryUserId, secondaryUserId) => {
     // add a provider section to the user data with the secondary userid
     await database.setUserData(primaryUserId, provider, { userId: userId });
 
-    return data;
+    // return data;  // this will leak credentials!
+    return { message: 'success' };
   } catch (error) {
     await error.response;
     console.log(`linkAccounts: caught exception: ${error}`);
@@ -132,7 +133,8 @@ exports.unlinkAccounts = async (primaryUserId, secondaryUserId) => {
     // remove the unlinked connection from the user store
     await database.removeConnection(primaryUserId, provider);
 
-    return data;
+    // return data;  // this will leak credentials!
+    return { message: 'success' };
   } catch (error) {
     await error.response;
     console.log(`unlinkAccounts: caught exception: ${error}`);
