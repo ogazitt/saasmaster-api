@@ -189,6 +189,27 @@ app.get('/facebook/reviews/:pageId', checkJwt, function(req, res){
     refresh);
 });
 
+// Post facebook reviews API - takes a page id as a parameter,
+// and multiple review ids in the body, and associates metadata with them
+// Data payload format:
+//     {
+//       key1: { meta1: value1, meta2: value2, ... },
+//       key2: { meta1: value1, meta2: value2, ... },
+//     }
+app.post('/facebook/reviews/:pageId', checkJwt, function (req, res){
+  const email = req.user[`${authConfig.audience}/email`];
+  const userId = req.user['sub'];
+  const pageId = req.params.pageId;
+  console.log(`POST /facebook/reviews/${pageId}: user: ${userId}; email: ${email}`);
+
+  storeMetadata(
+    res,
+    userId,
+    dataProviders.facebook.getPageReviews,
+    `facebook:${pageId}`,
+    req.body);
+});
+
 // Get twitter api data endpoint
 app.get('/twitter', checkJwt, function(req, res){
   const email = req.user[`${authConfig.audience}/email`];

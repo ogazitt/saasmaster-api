@@ -70,7 +70,7 @@ exports.storeMetadata = async (userId, provider, entity, metadata) => {
     // get the __invoke_info document
     const invokeInfo = await database.getDocument(userId, entityName, database.invokeInfo);
     if (!invokeInfo) {
-      console.log(`storeMetadata: could not find invokeInfo doc for ${entity}`);
+      console.log(`storeMetadata: could not find invokeInfo doc for ${entityName}`);
       return;
     }
 
