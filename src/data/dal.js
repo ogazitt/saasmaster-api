@@ -164,10 +164,11 @@ const storeData = async (userId, provider, entity, params, data, invokeInfo) => 
 // retrieve the sentiment score associated with the data
 const retrieveSentimentMetadata = async (userId, provider, data, invokeInfo) => {
   try {
-    // determine whether there is a sentiment text field
+    // determine whether there is a sentiment field or sentiment text field
     const sentimentTextField = provider.sentimentTextField;
+    const sentimentField = provider.sentimentField;
     const itemKeyField = provider.itemKey;
-    if (!sentimentTextField) {
+    if (!sentimentTextField && !sentimentField) {
       return;
     }
 
@@ -180,20 +181,26 @@ const retrieveSentimentMetadata = async (userId, provider, data, invokeInfo) => 
       const id = element[itemKeyField];
       const text = element[sentimentTextField];
       const invokeInfoForElement = invokeInfo[id] || { userId: userId };
-      const sentimentScore = invokeInfoForElement.__sentimentScore;
-      if (sentimentScore === undefined) {
-        // call the sentiment analysis API
-        const score = await sentiment.analyze(text);
-        console.log(`retrieved sentiment score ${score} for item ${id}`);
+      const currentSentiment = invokeInfoForElement.__sentiment;
+      let rating;
+      //const sentimentScore = invokeInfoForElement.__sentimentScore;
+      if (currentSentiment === undefined) {
+        if (sentimentField) {
+          rating = element[sentimentField];
+        } else {
+          // call the sentiment analysis API
+          rating = await sentiment.analyze(text);
+          console.log(`retrieved sentiment rating ${rating} for item ${id}`);
+        }
 
-        // store the sentiment score returend
-        invokeInfoForElement.__sentimentScore = score;
+        // store the sentiment score returned
+        invokeInfoForElement.__sentiment = rating;
         invokeInfo[id] = invokeInfoForElement;
 
         // create a combined metadata entry
         const metadataEntry = { 
           ...invokeInfoForElement, 
-          ...{ id: id, userId: userId, provider: provider.provider, __sentimentScore: score } 
+          ...{ id: id, userId: userId, provider: provider.provider, __sentiment: rating } 
         };
         metadata.push(metadataEntry);
       }

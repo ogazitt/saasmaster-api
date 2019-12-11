@@ -24,7 +24,8 @@ exports.apis = {
     name: 'getPageReviews',
     provider: 'facebook',
     arrayKey: 'data',
-    itemKey: 'created_time'
+    itemKey: 'created_time',
+    sentimentField: 'recommendation_type'
   },
 };
 
