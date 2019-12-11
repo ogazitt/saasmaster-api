@@ -283,6 +283,22 @@ app.get('/connections', checkJwt, function(req, res){
   returnConnections();
 });
 
+// Get metadata API endpoint
+//app.get('/connections', checkJwt, jwtAuthz(['read:timesheets']), function(req, res){
+app.get('/metadata', checkJwt, function(req, res){
+
+  const email = req.user[`${authConfig.audience}/email`];
+  const userId = req.user['sub'];
+  console.log(`/metadata: user: ${userId}; email: ${email}`);
+
+  const returnMetadata = async () => {
+    const metadata = await dal.getMetadata(userId) || {};
+    res.status(200).send(metadata);
+  }
+
+  returnMetadata();
+});
+  
 // Get profile API endpoint
 //app.get('/profile', checkJwt, jwtAuthz(['read:timesheets']), function(req, res){
 app.get('/profile', checkJwt, function(req, res){

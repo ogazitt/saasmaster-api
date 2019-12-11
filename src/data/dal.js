@@ -2,6 +2,8 @@
 // 
 // exports:
 //   getData: retrieve an entity and its enriched data - from cache or from the provider
+//   getMetadata: retrieve all metadata for a userId
+//   storeMetadata: store metadata for a particular entity
 
 const database = require('./database');
 const sentiment = require('../services/sentiment');
@@ -25,7 +27,7 @@ exports.getData = async (userId, provider, entity, params, forceRefresh = false)
     // if a refresh isn't forced, and the collection is fresh, return it from cache
     if (!forceRefresh && lastRetrieved > anHourAgo) {
       console.log(`getData: serving ${userId}:${entityName} from cache`);
-      const data = await database.query(userId, entityName, invokeInfo);
+      const data = await database.query(userId, entityName);
       if (!data) {
         return null;
       }
@@ -43,7 +45,14 @@ exports.getData = async (userId, provider, entity, params, forceRefresh = false)
     }
 
     // perform sentiment analysis for new data records, storing results in invokeInfo
-    await retrieveSentimentMetadata(provider, data, invokeInfo);
+    const metadata = await retrieveSentimentMetadata(userId, provider, data, invokeInfo);
+    if (metadata && metadata.length > 0) {
+      // construct the path to the metadata collection
+      const path = `${userId}/${entityName}/${database.invokeInfo}`;
+
+      // store the metadata, do NOT await the operation
+      await database.storeBatch(path, 'metadata', metadata, 'id', true);  
+    }
 
     // store the data (including invokeInfo document), but do NOT await the operation
     storeData(userId, provider, entityName, params, data, invokeInfo);
@@ -53,6 +62,16 @@ exports.getData = async (userId, provider, entity, params, forceRefresh = false)
     return enrichedData;      
   } catch (error) {
     console.log(`getData: caught exception: ${error}`);
+    return null;
+  }
+}
+
+exports.getMetadata = async (userId) => {
+  try {
+    const metadata = await database.queryGroup(userId, 'metadata');
+    return metadata;
+  } catch (error) {
+    console.log(`getMetadata: caught exception: ${error}`);
     return null;
   }
 }
@@ -79,6 +98,14 @@ exports.storeMetadata = async (userId, provider, entity, metadata) => {
 
     // store the resulting invokeInfo document
     await database.storeDocument(userId, entityName, database.invokeInfo, mergedData);
+
+    // construct the path to the metadata collection
+    const path = `${userId}/${entityName}/${database.invokeInfo}`;
+
+    // query existing metadata
+    const existingMetadata = await database.query(path, 'metadata');
+    const mergedMetadata = mergeMetadata(userId, provider, existingMetadata, metadata);
+    await database.storeBatch(path, 'metadata', mergedMetadata, 'id', true);
 
   } catch (error) {
     console.log(`storeMetadata: caught exception: ${error}`);
@@ -135,7 +162,7 @@ const storeData = async (userId, provider, entity, params, data, invokeInfo) => 
 }
 
 // retrieve the sentiment score associated with the data
-const retrieveSentimentMetadata = async (provider, data, invokeInfo) => {
+const retrieveSentimentMetadata = async (userId, provider, data, invokeInfo) => {
   try {
     // determine whether there is a sentiment text field
     const sentimentTextField = provider.sentimentTextField;
@@ -144,12 +171,15 @@ const retrieveSentimentMetadata = async (provider, data, invokeInfo) => {
       return;
     }
 
+    // start building up the metadata array
+    const metadata = [];
+
     // iterate over every result in the dataset
     for (const element of data) {
       // use the key to retrieve the sentiment score, if one is stored
       const id = element[itemKeyField];
       const text = element[sentimentTextField];
-      const invokeInfoForElement = invokeInfo[id] || {};
+      const invokeInfoForElement = invokeInfo[id] || { userId: userId };
       const sentimentScore = invokeInfoForElement.__sentimentScore;
       if (sentimentScore === undefined) {
         // call the sentiment analysis API
@@ -159,8 +189,18 @@ const retrieveSentimentMetadata = async (provider, data, invokeInfo) => {
         // store the sentiment score returend
         invokeInfoForElement.__sentimentScore = score;
         invokeInfo[id] = invokeInfoForElement;
+
+        // create a combined metadata entry
+        const metadataEntry = { 
+          ...invokeInfoForElement, 
+          ...{ id: id, userId: userId, provider: provider.provider, __sentimentScore: score } 
+        };
+        metadata.push(metadataEntry);
       }
-    }    
+    }
+
+    // return the metadata array
+    return metadata;
   } catch (error) {
     console.log(`retrieveSentimentData: caught exception: ${error}`);
     return null;
@@ -194,4 +234,30 @@ const deepMerge = (data1, data2) => {
     newObj[key] = { ...newObj[key], ...data2[key] };
   }
   return newObj;
+}
+
+const mergeMetadata = (userId, provider, existingMetadata, newMetadata) => {
+  // existingMetadata: [{ id, __sentiment, __handled }, { id, __sentiment, __handled }]
+  // newMetadata: { id: { __handled }, id: { __handled } }
+  try {
+    // create a combined, de-duped list of keys
+    const existingKeys = existingMetadata && existingMetadata.map(m => m.id);
+    const newKeys = Object.keys(newMetadata);
+    const combinedKeys = [...new Set([...existingKeys, ...newKeys])];
+
+    // construct a new array with the combined objects
+    const result = combinedKeys.map(key => {
+      const existing = existingMetadata.filter(m => m.id === key);
+      const existingEntry = existing && existing.length > 0 ? existing[0] : {};
+      const newEntry = newMetadata[key] || {};
+
+      // merge existing and new entry, and always store id and userId
+      return { ...existingEntry, ...newEntry, id: key, userId: userId, provider: provider.provider };
+    });
+
+    return result;
+  } catch (error) {
+    console.log(`mergeMetadata: caught exception: ${error}`);
+    return null;
+  }
 }

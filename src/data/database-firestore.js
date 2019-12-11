@@ -46,7 +46,7 @@ exports.storeDocument = async (userId, collection, name, data) => {
 }
 
 // store a batch of documents passed in as data, using key as a name
-exports.storeBatch = async (userId, collection, data, key) => {
+exports.storeBatch = async (userId, collection, data, key, overwrite) => {
   try {    
     const coll = users.doc(userId).collection(collection);
 
@@ -56,10 +56,15 @@ exports.storeBatch = async (userId, collection, data, key) => {
       const name = element[keyString];
       const docName = coll.doc(name);
       try {
-        // store the document only if it doesn't yet exist
-        const doc = await docName.get();
-        if (!doc.exists) {
-          await doc.set(element);
+        if (overwrite) {
+          // overwrite the document regardless of whether it exists
+          await docName.set(element);
+        } else {
+          // store the document only if it doesn't yet exist
+          const doc = await docName.get();
+          if (!doc.exists) {
+            await docName.set(element);
+          }
         }
       } catch (error) {
         console.log(`storeBatch: caught exception ${error} while storing ${name}`);
@@ -73,7 +78,7 @@ exports.storeBatch = async (userId, collection, data, key) => {
 
 // query for documents in a collection optionally based on a field value
 // return the results as an array of objects
-exports.query = async (userId, collection, invokeInfo, field, value) => {
+exports.query = async (userId, collection, field, value) => {
   try {
     const col = users.doc(userId).collection(collection);
     let snapshot;
@@ -91,6 +96,31 @@ exports.query = async (userId, collection, invokeInfo, field, value) => {
 
     // create a combined array with an entry from each document
     const array = docArray.map(doc => doc.data());
+
+    // return results
+    return array;
+  } catch (error) {
+    console.log(`query: caught exception: ${error}`);
+    return null;
+  }  
+}
+
+// query for documents in a collection group, optionally based on a field value
+// return the results as an array of objects
+exports.queryGroup = async (userId, collection, field, value) => {
+  try {
+    const col = db.collectionGroup(collection);
+    let query = col.where('userId', '==', userId);
+    if (field && value) {
+      // a query was passed in, so chain it to the query
+      query = query.where(field, '==', value);
+    } 
+
+    // get the document array that contains the query results
+    const docArray = await query.get();
+
+    // create a combined array with an entry from each document
+    const array = docArray.docs.map(doc => doc.data());
 
     // return results
     return array;

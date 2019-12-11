@@ -58,14 +58,20 @@ exports.storeDocument = async (userId, collection, name, data) => {
 }
 
 // store a batch of documents passed in as data, using key as a name
-exports.storeBatch = async (userId, collection, data, key) => {
-  return await provider.storeBatch(userId, collection, data, key);
+exports.storeBatch = async (userId, collection, data, key, overwrite = false) => {
+  return await provider.storeBatch(userId, collection, data, key, overwrite);
 }
 
 // query for documents in a collection optionally based on a field value
 // return the results as an array of objects
-exports.query = async (userId, collection, invokeInfo, field = null, value = null) => {
-  return await provider.query(userId, collection, invokeInfo, field, value);
+exports.query = async (userId, collection, field = null, value = null) => {
+  return await provider.query(userId, collection, field, value);
+}
+
+// query for documents in a collection group, optionally based on a field value
+// return the results as an array of objects
+exports.queryGroup = async (userId, collection, field = null, value = null) => {
+  return await provider.queryGroup(userId, collection, field, value);
 }
 
 // get all users
