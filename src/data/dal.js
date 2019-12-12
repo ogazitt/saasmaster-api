@@ -181,6 +181,7 @@ const queryMetadata = async (userId, entity) => {
 const retrieveSentimentMetadata = async (userId, provider, data, metadata) => {
   try {
     // determine whether there is a sentiment field or sentiment text field
+    const textField = provider.textField;
     const sentimentTextField = provider.sentimentTextField;
     const sentimentField = provider.sentimentField;
     const itemKeyField = provider.itemKey;
@@ -198,7 +199,8 @@ const retrieveSentimentMetadata = async (userId, provider, data, metadata) => {
     for (const element of data) {
       // use the key to retrieve the sentiment score, if one is stored
       const id = element[itemKeyField];
-      const text = element[sentimentTextField];
+      const text = element[textField];
+      const sentimentText = element[sentimentTextField];
 
       // get current metadata element, or initialze with a default if it doesn't exist
       const metadataArray = metadata.filter(m => m.id === id);
@@ -215,20 +217,18 @@ const retrieveSentimentMetadata = async (userId, provider, data, metadata) => {
           rating = element[sentimentField];
         } else {
           // call the sentiment analysis API
-          rating = await sentiment.analyze(text);
+          rating = await sentiment.analyze(sentimentText);
           console.log(`retrieved sentiment rating ${rating} for item ${id}`);
         }
 
-        // store the sentiment score returned
-        metadataElement.__sentiment = rating;
-
-        // create a combined metadata entry, with sentiment and core fields
+        // create a combined metadata entry, with text, sentiment, and core fields
         const metadataEntry = { 
           ...metadataElement, 
           ...{ 
             id: id, 
             userId: userId, 
             provider: provider.provider, 
+            text: text,
             __sentiment: rating 
           } 
         };

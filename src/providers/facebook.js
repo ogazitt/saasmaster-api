@@ -25,7 +25,8 @@ exports.apis = {
     provider: 'facebook',
     arrayKey: 'data',
     itemKey: 'created_time',
-    sentimentField: 'recommendation_type'
+    sentimentField: 'recommendation_type',
+    textField: 'review_text'
   },
 };
 
