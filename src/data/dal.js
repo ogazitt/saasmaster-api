@@ -24,51 +24,56 @@ exports.getData = async (userId, provider, entity, params, forceRefresh = false)
     const now = new Date().getTime();
     const anHourAgo = now - 3600000;
 
+    // declare data
+    let data; 
+
+    // retrieve existing metadata
+    let metadata = await queryMetadata(userId, entityName);
+
     // if a refresh isn't forced, and the collection is fresh, return it from cache
     if (!forceRefresh && lastRetrieved > anHourAgo) {
       console.log(`getData: serving ${userId}:${entityName} from cache`);
-      const data = await database.query(userId, entityName);
+
+      // retrieve data from cache
+      data = await database.query(userId, entityName);
       if (!data) {
         return null;
       }
-      // add any sentiment information to the records to return
-      const enrichedData = mergeMetadataWithData(provider, data, invokeInfo);
-      return enrichedData;        
+    } else {
+      console.log(`getData: retrieving ${userId}:${entityName} from provider`);
+
+      // retrieve data from provider
+      data = await callProvider(provider, params);
+      if (!data) {
+        return null;
+      }
+
+      // store the data (including invokeInfo document), but do NOT await the operation
+      storeData(userId, provider, entityName, params, data, invokeInfo);
+
+      // perform sentiment analysis for new data records, merging with existing metadata
+      const sentimentMetadata = await retrieveSentimentMetadata(userId, provider, data, metadata);
+      if (sentimentMetadata && sentimentMetadata.length > 0) {
+
+        // store the metadata if it was indeed refreshed, do NOT await the operation
+        storeMetadata(userId, entityName, sentimentMetadata);
+        metadata = sentimentMetadata;
+      }        
     }
 
-    console.log(`getData: retrieving ${userId}:${entityName} from provider`);
-
-    // retrieve data from provider
-    const data = await callProvider(provider, params);
-    if (!data) {
-      return null;
-    }
-
-    // perform sentiment analysis for new data records, storing results in invokeInfo
-    const metadata = await retrieveSentimentMetadata(userId, provider, data, invokeInfo);
-    if (metadata && metadata.length > 0) {
-      // construct the path to the metadata collection
-      const path = `${userId}/${entityName}/${database.invokeInfo}`;
-
-      // store the metadata, do NOT await the operation
-      await database.storeBatch(path, 'metadata', metadata, 'id', true);  
-    }
-
-    // store the data (including invokeInfo document), but do NOT await the operation
-    storeData(userId, provider, entityName, params, data, invokeInfo);
-
-    // merge any metadata information to the records to return
-    const enrichedData = mergeMetadataWithData(provider, data, invokeInfo);
-    return enrichedData;      
+    // merge the metadata with the data, and return both together
+    const combinedData = mergeMetadataWithData(provider, data, metadata);
+    return combinedData;
   } catch (error) {
     console.log(`getData: caught exception: ${error}`);
     return null;
   }
 }
 
+// retrieve all metadata for all data entities 
 exports.getMetadata = async (userId) => {
   try {
-    const metadata = await database.queryGroup(userId, 'metadata');
+    const metadata = await database.queryGroup(userId, database.metadata);
     return metadata;
   } catch (error) {
     console.log(`getMetadata: caught exception: ${error}`);
@@ -76,6 +81,7 @@ exports.getMetadata = async (userId) => {
   }
 }
 
+// store metadata for a particular data entity
 exports.storeMetadata = async (userId, provider, entity, metadata) => {
   try {
     const providerName = provider && provider.provider;
@@ -86,27 +92,14 @@ exports.storeMetadata = async (userId, provider, entity, metadata) => {
       return null;
     }
 
-    // get the __invoke_info document
-    const invokeInfo = await database.getDocument(userId, entityName, database.invokeInfo);
-    if (!invokeInfo) {
-      console.log(`storeMetadata: could not find invokeInfo doc for ${entityName}`);
-      return;
-    }
-
-    // merge the current data with the new metadata
-    const mergedData = deepMerge(invokeInfo, metadata);
-
-    // store the resulting invokeInfo document
-    await database.storeDocument(userId, entityName, database.invokeInfo, mergedData);
-
-    // construct the path to the metadata collection
-    const path = `${userId}/${entityName}/${database.invokeInfo}`;
-
     // query existing metadata
-    const existingMetadata = await database.query(path, 'metadata');
-    const mergedMetadata = mergeMetadata(userId, provider, existingMetadata, metadata);
-    await database.storeBatch(path, 'metadata', mergedMetadata, 'id', true);
+    const existingMetadata = await queryMetadata(userId, entityName);
 
+    // merge the new metadata into the existing metadata
+    const mergedMetadata = mergeMetadata(userId, provider, existingMetadata, metadata);
+
+    // store the merged metadata
+    await storeMetadata(userId, entityName, mergedMetadata);
   } catch (error) {
     console.log(`storeMetadata: caught exception: ${error}`);
     return null;
@@ -162,30 +155,40 @@ const storeData = async (userId, provider, entity, params, data, invokeInfo) => 
 }
 
 // retrieve the sentiment score associated with the data
-const retrieveSentimentMetadata = async (userId, provider, data, invokeInfo) => {
+const retrieveSentimentMetadata = async (userId, provider, data, metadata) => {
   try {
     // determine whether there is a sentiment field or sentiment text field
     const sentimentTextField = provider.sentimentTextField;
     const sentimentField = provider.sentimentField;
     const itemKeyField = provider.itemKey;
     if (!sentimentTextField && !sentimentField) {
-      return;
+      return null;
     }
 
+    // flag to indicate whether any new metadata was actually retrieved
+    let retrievedSentiment = false;
+
     // start building up the metadata array
-    const metadata = [];
+    const result = [];
 
     // iterate over every result in the dataset
     for (const element of data) {
       // use the key to retrieve the sentiment score, if one is stored
       const id = element[itemKeyField];
       const text = element[sentimentTextField];
-      const invokeInfoForElement = invokeInfo[id] || { userId: userId };
-      const currentSentiment = invokeInfoForElement.__sentiment;
+
+      // get current metadata element, or initialze with a default if it doesn't exist
+      const metadataArray = metadata.filter(m => m.id === id);
+      const metadataElement = metadataArray && metadataArray.length > 0 && metadataArray[0] || {};
+
+      // initiailize current sentiment
+      const currentSentiment = metadataElement.__sentiment;
       let rating;
-      //const sentimentScore = invokeInfoForElement.__sentimentScore;
+
+      // check to see whether the current sentiment has not yet been retrieved
       if (currentSentiment === undefined) {
         if (sentimentField) {
+          // use the sentiment value returned by the provider
           rating = element[sentimentField];
         } else {
           // call the sentiment analysis API
@@ -194,53 +197,84 @@ const retrieveSentimentMetadata = async (userId, provider, data, invokeInfo) => 
         }
 
         // store the sentiment score returned
-        invokeInfoForElement.__sentiment = rating;
-        invokeInfo[id] = invokeInfoForElement;
+        metadataElement.__sentiment = rating;
 
-        // create a combined metadata entry
+        // create a combined metadata entry, with sentiment and core fields
         const metadataEntry = { 
-          ...invokeInfoForElement, 
-          ...{ id: id, userId: userId, provider: provider.provider, __sentiment: rating } 
+          ...metadataElement, 
+          ...{ 
+            id: id, 
+            userId: userId, 
+            provider: provider.provider, 
+            __sentiment: rating 
+          } 
         };
-        metadata.push(metadataEntry);
+        result.push(metadataEntry);
+        retrievedSentiment = true;
+      } else { 
+        // sentiment field has previously been retrieved
+        // just use the current metadata element
+        result.push(metadataElement);
       }
     }
 
-    // return the metadata array
-    return metadata;
+    // only return the result if a new sentiment was retrieved
+    if (retrievedSentiment) {
+      return result;
+    } else {
+      return null;
+    }
   } catch (error) {
     console.log(`retrieveSentimentData: caught exception: ${error}`);
     return null;
   }
 }
 
-// enrich the returned dataset with any additional information stored in invokeInfo doc
-const mergeMetadataWithData = (provider, data, invokeInfo) => {
+// merge metadata and data together
+const mergeMetadataWithData = (provider, data, metadata) => {
   try {
-    const itemKeyField = provider.itemKey;
-    // create a combined array with an entry from each document
-    const array = data.map(element => {
-      const id = element[itemKeyField];
+    // check to see if there's any metadata, and if not, return the data
+    if (!metadata || !metadata.length) {
+      return data;
+    }
 
-      // combine document data with enriched data in invokeInfo document
-      const invokeInfoData = invokeInfo[id];
-      return { ...element, ...invokeInfoData };
+    // get the item key field from the provider info
+    const itemKeyField = provider.itemKey;
+
+    // create an array with combined data/metadata for each entry
+    const array = data.map(dataElement => {
+      const id = dataElement[itemKeyField];
+
+      // find the metadata element corresponding to the data element, using id
+      const metadataArray = metadata.filter(m => m.id === id);
+      const metadataElement = metadataArray.length > 0 ? metadataArray[0] : {};
+
+      // combine metadata and data into a single object (metadata first)
+      // for duplicate fields, give data precedence over metadata
+      return { ...metadataElement, ...dataElement };
     });
 
-    // return the array containing the enriched data
+    // return the array containing the merged data and metadata
     return array;
   } catch (error) {
-    console.log(`enrichData: caught exception: ${error}`);
+    console.log(`mergeMetadataWithData: caught exception: ${error}`);
     return null;
   }
 }
 
-const deepMerge = (data1, data2) => {
-  const newObj = { ...data1 };
-  for (const key of Object.keys(data2)) {
-    newObj[key] = { ...newObj[key], ...data2[key] };
+const queryMetadata = async (userId, entity) => {
+  try {
+    // construct the path to the invokeInfo document 
+    const path = `${userId}/${entity}/${database.invokeInfo}`;
+
+    // query existing metadata from metadata collection under invokeInfo doc
+    const metadata = await database.query(path, database.metadata);
+
+    return metadata;
+  } catch (error) {
+    console.log(`queryMetadata: caught exception: ${error}`);
+    return null;
   }
-  return newObj;
 }
 
 const mergeMetadata = (userId, provider, existingMetadata, newMetadata) => {
@@ -265,6 +299,50 @@ const mergeMetadata = (userId, provider, existingMetadata, newMetadata) => {
     return result;
   } catch (error) {
     console.log(`mergeMetadata: caught exception: ${error}`);
+    return null;
+  }
+}
+
+const storeMetadata = async (userId, entity, metadata) => {
+  try {
+    // construct the path to the invokeInfo document 
+    const path = `${userId}/${entity}/${database.invokeInfo}`;
+
+    // store the metadata as a batch of documents
+    await database.storeBatch(path, database.metadata, metadata, 'id', true);
+  } catch (error) {
+    console.log(`updateMetadata: caught exception: ${error}`);
+    return null;
+  }
+}
+
+const updateMetadata = async (userId, entity, provider, metadata) => {
+  try {
+    // get existing metadata
+    const existingMetadata = await queryMetadata(userId, entity);
+    
+    // create a combined, de-duped list of keys
+    const existingKeys = existingMetadata && existingMetadata.map(m => m.id);
+    const newKeys = metadata && metadata.map(m => m.id);
+    const combinedKeys = [...new Set([...existingKeys, ...newKeys])];
+
+    // construct a new array with the combined objects
+    const result = combinedKeys.map(key => {
+      const existingResult = existingMetadata.filter(m => m.id === key);
+      const existingEntry = existingResult && existingResult.length > 0 ? existingResult[0] : {};
+      const newResult = metadata.filter(m => m.id === key);
+      const newEntry = newResult && newResult.length > 0 ? newResult[0] : {};
+
+      // merge existing and new entry, and always store id and userId
+      return { ...existingEntry, ...newEntry, id: key, userId: userId, provider: provider.provider };
+    });
+
+    // store updated metadata
+    await storeMetadata(userId, entity, result);
+
+    return result;
+  } catch (error) {
+    console.log(`updateMetadata: caught exception: ${error}`);
     return null;
   }
 }

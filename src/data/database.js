@@ -29,6 +29,7 @@ const providers = {
 // define some constants - system info "userId" and invoke info "document name"
 exports.systemInfo = '__system_info';
 exports.invokeInfo = '__invoke_info';
+exports.metadata = 'metadata';
 exports.dataPipelineSection = 'dataPipeline';
 exports.lastUpdatedTimestamp = 'lastUpdatedTimestamp';
 exports.inProgress = 'inProgress';
@@ -44,7 +45,12 @@ exports.setProvider = (prov = 'firestore') => {
 // set the environment (dev or prod)
 exports.setEnv = (env = 'prod') => {
   // ensure there is a setEnv method before calling it
-  provider.setEnv && provider.setEnv(env)
+  provider.setEnv && provider.setEnv(env);
+
+  // for non-production environments, append env to metadata collection name
+  if (env !== 'prod') {
+    exports.metadata = `metadata-${env}`;
+  }
 }
 
 // get a document from a collection
