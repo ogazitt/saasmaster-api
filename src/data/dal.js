@@ -1,13 +1,14 @@
 // data access layer for abstracting the retrieval of entities
 // 
 // exports:
-//   getData: retrieve an entity and its enriched data - from cache or from the provider
+//   getData: retrieve an entity and its metadata - from cache or from the provider
 //   getMetadata: retrieve all metadata for a userId
 //   storeMetadata: store metadata for a particular entity
 
 const database = require('./database');
 const sentiment = require('../services/sentiment');
 
+// retrieve an entity and its metadata - from cache or from the provider
 exports.getData = async (userId, provider, entity, params, forceRefresh = false) => {
   try {
     const providerName = provider && provider.provider;
@@ -92,14 +93,8 @@ exports.storeMetadata = async (userId, provider, entity, metadata) => {
       return null;
     }
 
-    // query existing metadata
-    const existingMetadata = await queryMetadata(userId, entityName);
-
-    // merge the new metadata into the existing metadata
-    const mergedMetadata = mergeMetadata(userId, provider, existingMetadata, metadata);
-
-    // store the merged metadata
-    await storeMetadata(userId, entityName, mergedMetadata);
+    // merge the new metadata with any existing metadata, and update the database
+    await updateMetadata(userId, entityName, provider, metadata);
   } catch (error) {
     console.log(`storeMetadata: caught exception: ${error}`);
     return null;
@@ -134,22 +129,50 @@ const callProvider = async (provider, params) => {
   }
 }
 
-// store the retrieved data along with invocation information in the database
-const storeData = async (userId, provider, entity, params, data, invokeInfo) => {
+// splice metadata array and data array together, entry by entry
+const mergeMetadataWithData = (provider, data, metadata) => {
   try {
-    // add invocation information to invokeInfo document
-    invokeInfo.provider = provider.provider;
-    invokeInfo.name = provider.name;
-    invokeInfo.params = params;
-    invokeInfo.lastRetrieved = new Date().getTime();
+    // check to see if there's any metadata, and if not, return the data
+    if (!metadata || !metadata.length) {
+      return data;
+    }
 
-    // store the invocation information as a well-known document (__invoke_info) in the collection
-    await database.storeDocument(userId, entity, database.invokeInfo, invokeInfo);
+    // get the item key field from the provider info
+    const itemKeyField = provider.itemKey;
 
-    // shred the data returned into a batch of documents in the collection
-    await database.storeBatch(userId, entity, data, provider.itemKey);
+    // create an array with combined data/metadata for each entry
+    const array = data.map(dataElement => {
+      const id = dataElement[itemKeyField];
+
+      // find the metadata element corresponding to the data element, using id
+      const metadataArray = metadata.filter(m => m.id === id);
+      const metadataElement = metadataArray.length > 0 ? metadataArray[0] : {};
+
+      // combine metadata and data into a single object (metadata first)
+      // for duplicate fields, give data precedence over metadata
+      return { ...metadataElement, ...dataElement };
+    });
+
+    // return the array containing the merged data and metadata
+    return array;
   } catch (error) {
-    console.log(`storeData: caught exception: ${error}`);
+    console.log(`mergeMetadataWithData: caught exception: ${error}`);
+    return null;
+  }
+}
+
+// retrieve existing metadata for an entity
+const queryMetadata = async (userId, entity) => {
+  try {
+    // construct the path to the invokeInfo document 
+    const path = `${userId}/${entity}/${database.invokeInfo}`;
+
+    // query existing metadata from metadata collection under invokeInfo doc
+    const metadata = await database.query(path, database.metadata);
+
+    return metadata;
+  } catch (error) {
+    console.log(`queryMetadata: caught exception: ${error}`);
     return null;
   }
 }
@@ -230,79 +253,27 @@ const retrieveSentimentMetadata = async (userId, provider, data, metadata) => {
   }
 }
 
-// merge metadata and data together
-const mergeMetadataWithData = (provider, data, metadata) => {
+// store the retrieved data along with invocation information in the database
+const storeData = async (userId, provider, entity, params, data, invokeInfo) => {
   try {
-    // check to see if there's any metadata, and if not, return the data
-    if (!metadata || !metadata.length) {
-      return data;
-    }
+    // add invocation information to invokeInfo document
+    invokeInfo.provider = provider.provider;
+    invokeInfo.name = provider.name;
+    invokeInfo.params = params;
+    invokeInfo.lastRetrieved = new Date().getTime();
 
-    // get the item key field from the provider info
-    const itemKeyField = provider.itemKey;
+    // store the invocation information as a well-known document (__invoke_info) in the collection
+    await database.storeDocument(userId, entity, database.invokeInfo, invokeInfo);
 
-    // create an array with combined data/metadata for each entry
-    const array = data.map(dataElement => {
-      const id = dataElement[itemKeyField];
-
-      // find the metadata element corresponding to the data element, using id
-      const metadataArray = metadata.filter(m => m.id === id);
-      const metadataElement = metadataArray.length > 0 ? metadataArray[0] : {};
-
-      // combine metadata and data into a single object (metadata first)
-      // for duplicate fields, give data precedence over metadata
-      return { ...metadataElement, ...dataElement };
-    });
-
-    // return the array containing the merged data and metadata
-    return array;
+    // shred the data returned into a batch of documents in the collection
+    await database.storeBatch(userId, entity, data, provider.itemKey);
   } catch (error) {
-    console.log(`mergeMetadataWithData: caught exception: ${error}`);
+    console.log(`storeData: caught exception: ${error}`);
     return null;
   }
 }
 
-const queryMetadata = async (userId, entity) => {
-  try {
-    // construct the path to the invokeInfo document 
-    const path = `${userId}/${entity}/${database.invokeInfo}`;
-
-    // query existing metadata from metadata collection under invokeInfo doc
-    const metadata = await database.query(path, database.metadata);
-
-    return metadata;
-  } catch (error) {
-    console.log(`queryMetadata: caught exception: ${error}`);
-    return null;
-  }
-}
-
-const mergeMetadata = (userId, provider, existingMetadata, newMetadata) => {
-  // existingMetadata: [{ id, __sentiment, __handled }, { id, __sentiment, __handled }]
-  // newMetadata: { id: { __handled }, id: { __handled } }
-  try {
-    // create a combined, de-duped list of keys
-    const existingKeys = existingMetadata && existingMetadata.map(m => m.id);
-    const newKeys = Object.keys(newMetadata);
-    const combinedKeys = [...new Set([...existingKeys, ...newKeys])];
-
-    // construct a new array with the combined objects
-    const result = combinedKeys.map(key => {
-      const existing = existingMetadata.filter(m => m.id === key);
-      const existingEntry = existing && existing.length > 0 ? existing[0] : {};
-      const newEntry = newMetadata[key] || {};
-
-      // merge existing and new entry, and always store id and userId
-      return { ...existingEntry, ...newEntry, id: key, userId: userId, provider: provider.provider };
-    });
-
-    return result;
-  } catch (error) {
-    console.log(`mergeMetadata: caught exception: ${error}`);
-    return null;
-  }
-}
-
+// store metadata in the database
 const storeMetadata = async (userId, entity, metadata) => {
   try {
     // construct the path to the invokeInfo document 
@@ -316,6 +287,7 @@ const storeMetadata = async (userId, entity, metadata) => {
   }
 }
 
+// retrieve existing metadata, merge with new metadata, store the result
 const updateMetadata = async (userId, entity, provider, metadata) => {
   try {
     // get existing metadata

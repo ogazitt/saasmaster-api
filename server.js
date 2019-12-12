@@ -109,10 +109,10 @@ const getData = async (
 
 // store metadata associated with a set of data objects
 //   data is in the following format:
-//     {
-//       key1: { meta1: value1, meta2: value2, ... },
-//       key2: { meta1: value1, meta2: value2, ... },
-//     }
+//     [
+//       { id: key1, meta1: value1, meta2: value2, ... },
+//       { id: key2, meta1: value1, meta2: value2, ... },
+//     ]
 const storeMetadata = async (
   res,          // response object
   userId,       // userId for this request
@@ -125,6 +125,7 @@ const storeMetadata = async (
     await dal.storeMetadata(userId, provider, entity, data);
 
     // return the refreshed data
+    // BUGBUG: [userId] isn't right for FB pages, should be passed in!
     const newData = await dal.getData(userId, provider, entity, [userId]);
 
     // SUCCESS! send a success code back to client, with the new data
@@ -192,10 +193,10 @@ app.get('/facebook/reviews/:pageId', checkJwt, function(req, res){
 // Post facebook reviews API - takes a page id as a parameter,
 // and multiple review ids in the body, and associates metadata with them
 // Data payload format:
-//     {
-//       key1: { meta1: value1, meta2: value2, ... },
-//       key2: { meta1: value1, meta2: value2, ... },
-//     }
+//     [
+//       { id: key1, meta1: value1, meta2: value2, ... },
+//       { id: key2, meta1: value1, meta2: value2, ... },
+//     ]
 app.post('/facebook/reviews/:pageId', checkJwt, function (req, res){
   const email = req.user[`${authConfig.audience}/email`];
   const userId = req.user['sub'];
@@ -229,10 +230,10 @@ app.get('/twitter', checkJwt, function(req, res){
 // Post twitter mentions API - takes multiple tweet ids in the body and 
 // associates metadata with them
 // Data payload format:
-//     {
-//       key1: { meta1: value1, meta2: value2, ... },
-//       key2: { meta1: value1, meta2: value2, ... },
-//     }
+//     [
+//       { id: key1, meta1: value1, meta2: value2, ... },
+//       { id: key2, meta1: value1, meta2: value2, ... },
+//     ]
 app.post('/twitter/mentions', checkJwt, function (req, res){
   const email = req.user[`${authConfig.audience}/email`];
   const userId = req.user['sub'];
@@ -256,15 +257,14 @@ app.post('/twitter/mentions/:tweetId', checkJwt, function (req, res){
   const tweetId = req.params.tweetId;
   console.log(`/twitter/mentions/${tweetId}: user: ${userId}; email: ${email}`);
 
-  // construct the data object in the appropriate format
-  const dataObj = {};
-  dataObj[tweetId] = req.body;
+  // construct the metadata array in the expected format
+  const metadataArray = [{ ...req.body, id: tweetId }];
 
   storeMetadata(
     res,
     userId,
     dataProviders.twitter.getTweets,
-    dataObj);
+    metadataArray); 
 });
 
 // Get connections API endpoint
