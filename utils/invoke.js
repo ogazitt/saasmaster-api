@@ -7,11 +7,14 @@ const pubsub = new PubSub();
 const env = process.env.NODE_ENV || 'prod';
 console.log('environment:', env);
 
-const topicName = `invoke-load-${env}`;
+const action = process.env.ACTION || 'load';
+console.log('action:', action)
 
-// create an 'invoke-load' message
+const topicName = `invoke-${env}`;
+
+// create an 'load' message
 const message = JSON.stringify({ 
-  action: 'invoke-load'
+  action: action
 });
 
 const messageBuffer = Buffer.from(message);

@@ -31,6 +31,8 @@ exports.systemInfo = '__system_info';
 exports.invokeInfo = '__invoke_info';
 exports.metadata = 'metadata';
 exports.dataPipelineSection = 'dataPipeline';
+exports.loadSection = 'load';
+exports.snapshotSection = 'snapshot';
 exports.lastUpdatedTimestamp = 'lastUpdatedTimestamp';
 exports.inProgress = 'inProgress';
 

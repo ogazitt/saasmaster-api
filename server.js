@@ -352,22 +352,23 @@ app.post('/link', checkJwt, function(req, res){
   res.status(200).send({ message: 'Unknown action'});
 });
 
-// invoke-load endpoint: this is only called from the pubsub push subscription
-app.post('/invoke-load', function(req, res){
+// invoke endpoint: this is only called from the pubsub push subscription
+app.post('/invoke', function(req, res){
   //app.post('/invoke-load', checkJwt, function(req, res){
-  console.log('POST /invoke-load');
+  console.log('POST /invoke');
   const auth = req.headers.authorization;
   const [, token] = auth.match(/Bearer (.*)/);
 
   // validate the authorization bearer JWT
   if (google.validateJwt(token)) {
-    // invoke the data pipeline event handler
-    datapipeline.dataPipelineHandler(req.body);
+    // invoke the data pipeline message handler
+    // this will dispatch to the appropriate event handler based on the 'action' in the body
+    datapipeline.messageHandler(req.body);
   }
 
   res.status(204).send();
 });
-  
+
 // Create timesheets API endpoint
 app.post('/timesheets', checkJwt, jwtAuthz(['create:timesheets']), function(req, res){
   console.log('post api');

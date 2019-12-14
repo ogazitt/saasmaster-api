@@ -36,37 +36,13 @@ exports.createPushSubscription = async (topic, subName, endpoint, serviceAccount
   return subscription;
 }
 
-// create a pull subscription on the subscription topic name, with a set 
-// of message handlers passed in as a map.
-// format of messages:
-// {
-//   action: 'action name'    // e.g. 'invoke-load'
-//   ...                      // message specific fields
-// }
-exports.createPullSubscription = async (topic, subName, handlers) => {
-  // create or retrieve the subscription (null endpoint indicates a pull sub)
-  const subscription = await createSubscription(topic, subName, null);
+// create a pull subscription on the subscription topic name, with a message handler 
+exports.createPullSubscription = async (topic, subName, handler) => {
 
   // define the message handler
   const messageHandler = async (message) => {
-    console.log(`Received message ${message.id}:`);
-    console.log(`\tData: ${message.data}`);
-
     try {
-      // convert the message data to a JSON string, and parse into a map
-      const data = JSON.parse(message.data.toString());
-
-      // retrieve the action and the handler associated with it
-      const action = data.action;
-      const handler = action && handlers[action];
-
-      // validate the message action
-      if (!action || !handler) {
-        console.log(`messageHandler: unknown action ${action}`);
-      } else {
-        // invoke handler
-        await handler(data);
-      }
+      handler && await handler(message);
     } catch (error) {
       console.log(`messageHandler: caught exception ${error}`);
     }
@@ -81,6 +57,9 @@ exports.createPullSubscription = async (topic, subName, handlers) => {
   }
   
   try {
+    // create or retrieve the subscription (null endpoint indicates a pull sub)
+    const subscription = await createSubscription(topic, subName, null);
+
     // listen for new messages
     subscription.on(`message`, messageHandler);
     subscription.on(`error`, errorHandler);
