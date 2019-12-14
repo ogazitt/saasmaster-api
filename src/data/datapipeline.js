@@ -142,7 +142,7 @@ const baseHandler = async (sectionName, interval, handler, data) => {
     
     // if the timestamp is older than 59 minutes, invoke the data load pipeline
     if (isStale(timestamp, interval) && !inProgress) {
-      console.log('invoking data load pipeline');
+      console.log(`invoking ${sectionName} pipeline`);
 
       // set a flag indicating data pipeline is "inProgress"
       sectionObject[database.inProgress] = true;
@@ -152,7 +152,7 @@ const baseHandler = async (sectionName, interval, handler, data) => {
       await handler(data);
     }
   } catch (error) {
-    console.log(`loadHandler: caught exception: ${error}`);
+    console.log(`baseHandler: caught exception: ${error}`);
   }
 }
 
