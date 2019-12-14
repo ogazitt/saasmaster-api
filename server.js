@@ -356,7 +356,8 @@ app.post('/link', checkJwt, function(req, res){
 app.post('/invoke', function(req, res){
   //app.post('/invoke-load', checkJwt, function(req, res){
   console.log('POST /invoke');
-  console.log(`\tData: ${req.body}`);
+  const message = Buffer.from(req.body.message.data, 'base64').toString('utf-8');
+  console.log(`\tData: ${message}`);
 
   const auth = req.headers.authorization;
   const [, token] = auth.match(/Bearer (.*)/);
@@ -365,7 +366,7 @@ app.post('/invoke', function(req, res){
   if (google.validateJwt(token)) {
     // invoke the data pipeline message handler
     // this will dispatch to the appropriate event handler based on the 'action' in the body
-    datapipeline.messageHandler(req.body);
+    datapipeline.messageHandler(message);
   }
 
   res.status(204).send();
