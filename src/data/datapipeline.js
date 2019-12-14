@@ -107,13 +107,10 @@ const createScheduler = async (env, dataPipelineObject, action, schedule) => {
 //   action: 'action name'    // e.g. 'load', 'snapshot'
 //   ...                      // message specific fields
 // }
-exports.messageHandler = async (message) => {
+exports.messageHandler = async (dataBuffer) => {
   try {
-    console.log(`Received message ${message.id}:`);
-    console.log(`\tData: ${message.data}`);
-
     // convert the message data to a JSON string, and parse into a map
-    const data = JSON.parse(message.data.toString());
+    const data = JSON.parse(dataBuffer.toString());
 
     // retrieve the action and the handler associated with it
     const action = data.action;

@@ -42,7 +42,10 @@ exports.createPullSubscription = async (topic, subName, handler) => {
   // define the message handler
   const messageHandler = async (message) => {
     try {
-      handler && await handler(message);
+      console.log(`Received message ${message.id}:`);
+      console.log(`\tData: ${message.data}`);
+  
+      handler && await handler(message.data);
     } catch (error) {
       console.log(`messageHandler: caught exception ${error}`);
     }

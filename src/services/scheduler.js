@@ -21,7 +21,7 @@ exports.createPubSubJob = async (jobName, topicName, action, schedule = '0 */1 *
       name: name,
       pubsubTarget: {
         topicName: topic,
-        data: Buffer.from(`{ "action": ${action} }`)
+        data: Buffer.from(`{ "action": "${action}" }`)
       },
       schedule: schedule,
       timeZone: 'America/Los_Angeles',

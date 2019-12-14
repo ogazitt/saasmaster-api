@@ -356,6 +356,8 @@ app.post('/link', checkJwt, function(req, res){
 app.post('/invoke', function(req, res){
   //app.post('/invoke-load', checkJwt, function(req, res){
   console.log('POST /invoke');
+  console.log(`\tData: ${req.body}`);
+
   const auth = req.headers.authorization;
   const [, token] = auth.match(/Bearer (.*)/);
 
