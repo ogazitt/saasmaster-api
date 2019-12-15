@@ -1,7 +1,10 @@
 // sentiment analysis using google cloud API
 // 
 // exports:
-//   analyze(text): returns the sentiment (scale: [positive,neutral,negative]) of a block of text
+//   analyze(text): returns the sentiment of a block of text 
+//   result is an array in the following format: [score, rating]
+//     score is in a range of [-0.5, 0.5] 
+//     rating is one of [positive,neutral,negative]
 
 const language = require('@google-cloud/language');
 const client = new language.LanguageServiceClient({
@@ -25,7 +28,7 @@ exports.analyze = async (text) => {
     
     // normalize and return the rating as one of [positive, neutral, negative]
     const rating = score >= 0.1 ? 'positive' : score <= -0.1 ? 'negative' : 'neutral';
-    return rating;
+    return [score, rating];
   } catch (error) {
     console.log(`analyze: caught exception: ${error}`);
     return null;

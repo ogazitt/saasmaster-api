@@ -208,17 +208,25 @@ const retrieveSentimentMetadata = async (userId, provider, data, metadata) => {
 
       // initiailize current sentiment
       const currentSentiment = metadataElement.__sentiment;
-      let rating;
 
       // check to see whether the current sentiment has not yet been retrieved
       if (currentSentiment === undefined) {
+        // initialize rating and score
+        let rating = 'neutral';
+        let score = 0;
+  
         if (sentimentField) {
           // use the sentiment value returned by the provider
           rating = element[sentimentField];
+          // synthesize a score based on the rating text
+          score = rating === 'positive' ? 0.4 : rating === 'negative' ? -0.4 : 0;
         } else {
           // call the sentiment analysis API
-          rating = await sentiment.analyze(sentimentText);
-          console.log(`retrieved sentiment rating ${rating} for item ${id}`);
+          const result = await sentiment.analyze(sentimentText);
+          if (result) {
+            [score, rating] = result;
+            console.log(`retrieved sentiment score ${score}, rating ${rating} for item ${id}`);
+          }
         }
 
         // create a combined metadata entry, with text, sentiment, and core fields
@@ -229,7 +237,8 @@ const retrieveSentimentMetadata = async (userId, provider, data, metadata) => {
             userId: userId, 
             provider: provider.provider, 
             text: text,
-            __sentiment: rating 
+            __sentiment: rating,
+            __sentimentScore: score
           } 
         };
         result.push(metadataEntry);

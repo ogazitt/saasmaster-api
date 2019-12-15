@@ -234,42 +234,59 @@ const snapshotPipeline = async () => {
     // get all the users in the database
     const users = await database.getAllUsers();
 
-    /*
     // loop over the users in parallel
     await Promise.all(users.map(async userId => {
       try {
-        // retrieve all the collections associated with the user
-        const collections = await database.getUserCollections(userId);
-        console.log(`user: ${userId} collections: ${collections}`);
-
+        // retrieve all the metadata associated with the user
+        const metadata = await dal.getMetadata(userId);
+        const providers = metadata && metadata.map(m => m.provider);
+        const providerSet = [...new Set(providers)];
+        
         // if no results, nothing to do
-        if (!collections || !collections.length) {
+        if (!providerSet || !providerSet.length || !metadata || !metadata.length) {
           return;
         }
 
-        // retrieve each of the collections in parallel
-        await Promise.all(collections.map(async collection => {
-          // retrieve the __invoke_info document for the collection
-          const invokeInfo = await database.getDocument(userId, collection, database.invokeInfo);
+        // set up ratings over which to calculate counts
+        const ratings = ['positive', 'neutral', 'negative'];
 
-          // validate invocation info
-          if (invokeInfo && invokeInfo.provider && invokeInfo.name) {
-            const providerName = invokeInfo.provider,
-            funcName = invokeInfo.name,
-            providerObject = dataProviders[providerName],
-            provider = providerObject && providerObject[funcName],
-            params = invokeInfo.params;
+        // start building history object
+        const history = {};
 
-            // utilize the data access layer's getData mechanism to re-retrieve object
-            // force the refresh using the forceRefresh = true flag
-            await dal.getData(userId, provider, collection, params, true);
+        // for each of the unique providers, calculate aggregates
+        for (const provider of providerSet) {
+          // create an array that contains the rating counts for each rating (positive, neutral, negative)
+          // it will look something like [ 5, 3, 2 ]
+          const ratingCounts = ratings.map(rating => 
+            metadata.filter(m => m.provider === provider && m.__sentiment === rating).length);
+
+          const historySection = {};
+          for (const index in ratings) {
+            const key = ratings[index];
+            const value = ratingCounts[index];
+            historySection[key] = value;
           }
-        }));
+
+          // calculate the aggregate score from all the sentiment scores for this provider
+          const providerScore = metadata.reduce((acc, curr) => acc + 
+            (curr.provider === provider ? curr.__sentimentScore : 0), 0);
+          const averageScore = providerScore / metadata.filter(m => m.provider === provider).length;
+          historySection.averageScore = averageScore;
+
+          history[provider] = historySection;
+        }
+        
+        console.log(`user: ${userId} snapsnot: ${JSON.stringify(history)}`);
+
+        // store the snapshot document
+        const docName = new Date().getTime().toString();
+        await database.storeDocument(userId, database.history, docName, history);
+
       } catch (error) {
         console.log(`snapshotPipeline: user ${userId} caught exception: ${error}`);        
       }
     }));
-*/
+
     // update the system information file snapshot section 
     updateSystemInfoSection(database.snapshotSection);
 

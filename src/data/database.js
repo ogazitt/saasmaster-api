@@ -29,6 +29,7 @@ const providers = {
 // define some constants - system info "userId" and invoke info "document name"
 exports.systemInfo = '__system_info';
 exports.invokeInfo = '__invoke_info';
+exports.history = '__history';
 exports.metadata = 'metadata';
 exports.dataPipelineSection = 'dataPipeline';
 exports.loadSection = 'load';
