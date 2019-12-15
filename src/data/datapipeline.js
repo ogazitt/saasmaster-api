@@ -278,7 +278,21 @@ const snapshotPipeline = async () => {
         
         // compute and store the timestamp
         const timestamp = new Date().getTime();
+
+        // compute and store the aggregate ratings across providers
         history.timestamp = timestamp;
+        const ratingCounts = ratings.map(rating => 
+          metadata.filter(m => m.__sentiment === rating).length);
+        for (const index in ratings) {
+          const key = ratings[index];
+          const value = ratingCounts[index];
+          history[key] = value;
+        }
+
+        // compute and store the average score across all providers
+        const totalScore = metadata.reduce((acc, curr) => acc + curr.__sentimentScore, 0);
+        const averageScore = totalScore / metadata.length;
+        history.averageScore = averageScore;
 
         console.log(`user: ${userId} snapsnot: ${JSON.stringify(history)}`);
 
