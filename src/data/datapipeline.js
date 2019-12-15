@@ -276,11 +276,14 @@ const snapshotPipeline = async () => {
           history[provider] = historySection;
         }
         
+        // compute and store the timestamp
+        const timestamp = new Date().getTime();
+        history.timestamp = timestamp;
+
         console.log(`user: ${userId} snapsnot: ${JSON.stringify(history)}`);
 
-        // store the snapshot document
-        const docName = new Date().getTime().toString();
-        await database.storeDocument(userId, database.history, docName, history);
+        // store the snapshot document with the timestamp as the document name
+        await database.storeDocument(userId, database.history, timestamp.toString(), history);
 
       } catch (error) {
         console.log(`snapshotPipeline: user ${userId} caught exception: ${error}`);        

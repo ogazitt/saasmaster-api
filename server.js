@@ -284,7 +284,7 @@ app.get('/connections', checkJwt, function(req, res){
 });
 
 // Get metadata API endpoint
-//app.get('/connections', checkJwt, jwtAuthz(['read:timesheets']), function(req, res){
+//app.get('/metadata', checkJwt, jwtAuthz(['read:timesheets']), function(req, res){
 app.get('/metadata', checkJwt, function(req, res){
 
   const email = req.user[`${authConfig.audience}/email`];
@@ -299,6 +299,22 @@ app.get('/metadata', checkJwt, function(req, res){
   returnMetadata();
 });
   
+// Get history API endpoint
+//app.get('/history', checkJwt, jwtAuthz(['read:timesheets']), function(req, res){
+app.get('/history', checkJwt, function(req, res){
+
+  const email = req.user[`${authConfig.audience}/email`];
+  const userId = req.user['sub'];
+  console.log(`/history: user: ${userId}; email: ${email}`);
+
+  const returnHistory = async () => {
+    const history = await dal.getHistory(userId) || {};
+    res.status(200).send(history);
+  }
+
+  returnHistory();
+});
+
 // Get profile API endpoint
 //app.get('/profile', checkJwt, jwtAuthz(['read:timesheets']), function(req, res){
 app.get('/profile', checkJwt, function(req, res){

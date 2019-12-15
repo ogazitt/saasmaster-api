@@ -2,6 +2,7 @@
 // 
 // exports:
 //   getData: retrieve an entity and its metadata - from cache or from the provider
+//   getHistory: retrieve metadata snapshot history for a userId
 //   getMetadata: retrieve all metadata for a userId
 //   storeMetadata: store metadata for a particular entity
 
@@ -67,6 +68,23 @@ exports.getData = async (userId, provider, entity, params, forceRefresh = false)
     return combinedData;
   } catch (error) {
     console.log(`getData: caught exception: ${error}`);
+    return null;
+  }
+}
+
+// retrieve metadata history for a userId in a timerange
+// if passed in, range should be [start, end] where both are integer milliseconds after epoch
+exports.getHistory = async (userId, range) => {
+  try {
+    const history = await database.query(userId, database.history);
+    let result = history;
+    if (range) {
+      const [start, end] = range;
+      result = history.filter(e => e.timestamp > start && e.timestamp < end);
+    }
+    return result;
+  } catch (error) {
+    console.log(`getHistory: caught exception: ${error}`);
     return null;
   }
 }
