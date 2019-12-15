@@ -47,15 +47,16 @@ exports.apis.getTweets.func = async ([userId]) => {
     const httpMethod = 'GET',
     d = new Date(),
     timestamp = Math.round(d.getTime() / 1000),
-    url = 'https://api.twitter.com/1.1/statuses/mentions_timeline.json?count=5',
+    //url = 'https://api.twitter.com/1.1/statuses/mentions_timeline.json?count=5',
+    url = 'https://api.twitter.com/1.1/statuses/mentions_timeline.json',
     parameters = {
-        oauth_consumer_key: authConfig.twitter_consumer_key,
-        oauth_nonce: 'B1R6tk7SguJ', // BUGBUG: generate new nonce
-        oauth_signature_method: 'HMAC-SHA1',
-        oauth_timestamp: timestamp,
-        oauth_token: user.accessToken,
-        oauth_version: '1.0',
-        count: '5'
+      oauth_consumer_key: authConfig.twitter_consumer_key,
+      oauth_nonce: 'B1R6tk7SguJ', // BUGBUG: generate new nonce
+      oauth_signature_method: 'HMAC-SHA1',
+      oauth_timestamp: timestamp,
+      oauth_token: user.accessToken,
+      oauth_version: '1.0',
+      //count: '5'
     },
     consumerSecret = authConfig.twitter_consumer_secret,
     tokenSecret = user.accessTokenSecret,
