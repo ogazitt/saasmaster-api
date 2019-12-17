@@ -62,13 +62,19 @@ app.use(bodyParser.urlencoded({
   extended: true
 }));
 
+// create middleware that will log all requests, including userId, email, and impersonated UserId
+// it will also set the userId property on the request object for future pipeline stages
+const processUser = (req, res, next) => {
+  const userId = req.user['sub'];
+  const impersonatedUserId = req.headers.impersonateduser;
+  const processingAs = impersonatedUserId ? `processing as ${impersonatedUserId}` : '';
+  console.log(`${req.method} ${req.url}: userId: ${userId} ${processingAs}`);
+  req.userId = impersonatedUserId || userId;
+  next();
+};
+
 // configure a static file server
 app.use(express.static(path.join(__dirname, 'build')));
-
-// Get timesheets API endpoint (old)
-app.get('/timesheets', checkJwt, jwtAuthz(['read:timesheets']), function(req, res){
-  res.status(200).send({});
-});
 
 // async function to retrieve provider data (either from storage cache
 // or directly from provider), update cache, and return the result
@@ -140,50 +146,37 @@ const storeMetadata = async (
 };
 
 // Get google api data endpoint
-app.get('/google', checkJwt, function(req, res){
-  const email = req.user[`${authConfig.audience}/email`];
-  const userId = req.user['sub'];
-  const refresh = req.query.refresh || false;
-
-  console.log(`/google: user: ${userId}; email: ${email}`);
-  
+app.get('/google', checkJwt, processUser, function(req, res){
+  const refresh = req.query.refresh || false;  
   getData(
     res, 
-    userId, 
+    req.userId, 
     dataProviders['google-oauth2'].getCalendarData, 
     null,     // default entity name
-    [userId], // parameter array
+    [req.userId], // parameter array
     refresh);
 });
 
 // Get facebook api data endpoint
-app.get('/facebook', checkJwt, function(req, res){
-  const email = req.user[`${authConfig.audience}/email`];
-  const userId = req.user['sub'];
+app.get('/facebook', checkJwt, processUser, function(req, res){
   const refresh = req.query.refresh || false;
-  console.log(`/facebook: user: ${userId}; email: ${email}`);
-
   getData(
     res, 
-    userId, 
+    req.userId, 
     dataProviders.facebook.getPages, 
     null,     // default entity name
-    [userId], // parameter array
+    [req.userId], // parameter array
     refresh);
 });
 
 // Get facebook api data endpoint
-app.get('/facebook/reviews/:pageId', checkJwt, function(req, res){
-  const email = req.user[`${authConfig.audience}/email`];
-  const userId = req.user['sub'];
+app.get('/facebook/reviews/:pageId', checkJwt, processUser, function(req, res){
   const pageId = req.params.pageId;
   const refresh = req.query.refresh || false;
   const accessToken = req.headers.token;
-  console.log(`/facebook/reviews/${pageId}: user: ${userId}; email: ${email}`);
-
   getData(
     res, 
-    userId, 
+    req.userId, 
     dataProviders.facebook.getPageReviews, 
     `facebook:${pageId}`,  // entity name must be constructed dynamically
     [pageId, accessToken], // parameter array
@@ -197,33 +190,24 @@ app.get('/facebook/reviews/:pageId', checkJwt, function(req, res){
 //       { id: key1, meta1: value1, meta2: value2, ... },
 //       { id: key2, meta1: value1, meta2: value2, ... },
 //     ]
-app.post('/facebook/reviews/:pageId', checkJwt, function (req, res){
-  const email = req.user[`${authConfig.audience}/email`];
-  const userId = req.user['sub'];
-  const pageId = req.params.pageId;
-  console.log(`POST /facebook/reviews/${pageId}: user: ${userId}; email: ${email}`);
-
+app.post('/facebook/reviews/:pageId', checkJwt, processUser, function (req, res){
   storeMetadata(
     res,
-    userId,
+    req.userId,
     dataProviders.facebook.getPageReviews,
     `facebook:${pageId}`,
     req.body);
 });
 
 // Get twitter api data endpoint
-app.get('/twitter', checkJwt, function(req, res){
-  const email = req.user[`${authConfig.audience}/email`];
-  const userId = req.user['sub'];
+app.get('/twitter', checkJwt, processUser, function(req, res){
   const refresh = req.query.refresh || false;
-  console.log(`/twitter: user: ${userId}; email: ${email}`);
-
   getData(
     res, 
-    userId, 
+    req.userId, 
     dataProviders.twitter.getTweets, 
     null,     // default entity name
-    [userId], // parameter array
+    [req.userId], // parameter array
     refresh);
 });
 
@@ -234,14 +218,10 @@ app.get('/twitter', checkJwt, function(req, res){
 //       { id: key1, meta1: value1, meta2: value2, ... },
 //       { id: key2, meta1: value1, meta2: value2, ... },
 //     ]
-app.post('/twitter/mentions', checkJwt, function (req, res){
-  const email = req.user[`${authConfig.audience}/email`];
-  const userId = req.user['sub'];
-  console.log(`POST /twitter/mentions: user: ${userId}; email: ${email}`);
-
+app.post('/twitter/mentions', checkJwt, processUser, function (req, res){
   storeMetadata(
     res,
-    userId,
+    req.userId,
     dataProviders.twitter.getTweets,
     null,     // default entity name
     req.body);
@@ -251,83 +231,50 @@ app.post('/twitter/mentions', checkJwt, function (req, res){
 // and associates the metdata found in the body 
 // Data payload format:
 //   { meta1: value1, meta2: value2, ... }
-app.post('/twitter/mentions/:tweetId', checkJwt, function (req, res){
-  const email = req.user[`${authConfig.audience}/email`];
-  const userId = req.user['sub'];
-  const tweetId = req.params.tweetId;
-  console.log(`/twitter/mentions/${tweetId}: user: ${userId}; email: ${email}`);
-
+app.post('/twitter/mentions/:tweetId', checkJwt, processUser, function (req, res){
   // construct the metadata array in the expected format
   const metadataArray = [{ ...req.body, id: tweetId }];
-
   storeMetadata(
     res,
-    userId,
+    req.userId,
     dataProviders.twitter.getTweets,
     metadataArray); 
 });
 
 // Get connections API endpoint
 //app.get('/connections', checkJwt, jwtAuthz(['read:timesheets']), function(req, res){
-app.get('/connections', checkJwt, function(req, res){
-  
-  const email = req.user[`${authConfig.audience}/email`];
-  const userId = req.user['sub'];
-  console.log(`/connections: user: ${userId}; email: ${email}`);
-
+app.get('/connections', checkJwt, processUser, function(req, res){
   const returnConnections = async () => {
-    const conns = await database.connections(userId) || {};
+    const conns = await database.connections(req.userId) || {};
     res.status(200).send(conns);
   }
-
   returnConnections();
 });
 
 // Get metadata API endpoint
-//app.get('/metadata', checkJwt, jwtAuthz(['read:timesheets']), function(req, res){
-app.get('/metadata', checkJwt, function(req, res){
-
-  const email = req.user[`${authConfig.audience}/email`];
-  const userId = req.user['sub'];
-  console.log(`/metadata: user: ${userId}; email: ${email}`);
-
+app.get('/metadata', checkJwt, processUser, function(req, res){
   const returnMetadata = async () => {
-    const metadata = await dal.getMetadata(userId) || {};
+    const metadata = await dal.getMetadata(req.userId) || {};
     res.status(200).send(metadata);
   }
-
   returnMetadata();
 });
   
 // Get history API endpoint
-//app.get('/history', checkJwt, jwtAuthz(['read:timesheets']), function(req, res){
-app.get('/history', checkJwt, function(req, res){
-
-  const email = req.user[`${authConfig.audience}/email`];
-  const userId = req.user['sub'];
-  console.log(`/history: user: ${userId}; email: ${email}`);
-
+app.get('/history', checkJwt, processUser, function(req, res){
   const returnHistory = async () => {
-    const history = await dal.getHistory(userId) || {};
+    const history = await dal.getHistory(req.userId) || {};
     res.status(200).send(history);
   }
-
   returnHistory();
 });
 
 // Get profile API endpoint
-//app.get('/profile', checkJwt, jwtAuthz(['read:timesheets']), function(req, res){
-app.get('/profile', checkJwt, function(req, res){
-  
-  const email = req.user[`${authConfig.audience}/email`];
-  const userId = req.user['sub'];
-  console.log(`/profile: user: ${userId}; email: ${email}`);
-
+app.get('/profile', checkJwt, processUser, function(req, res){
   const returnProfile = async () => {
-    const profile = await auth0.getAuth0Profile(userId) || {};
+    const profile = await auth0.getAuth0Profile(req.userId) || {};
     res.status(200).send(profile);
   }
-
   returnProfile();
 });
 
@@ -370,7 +317,6 @@ app.post('/link', checkJwt, function(req, res){
 
 // invoke endpoint: this is only called from the pubsub push subscription
 app.post('/invoke', function(req, res){
-  //app.post('/invoke-load', checkJwt, function(req, res){
   console.log('POST /invoke');
   const message = Buffer.from(req.body.message.data, 'base64').toString('utf-8');
   console.log(`\tData: ${message}`);
@@ -388,7 +334,13 @@ app.post('/invoke', function(req, res){
   res.status(204).send();
 });
 
-// Create timesheets API endpoint
+
+// Get timesheets API endpoint (OLD - ONLY HERE TO SHOW jwtAuthz)
+app.get('/timesheets', checkJwt, jwtAuthz(['read:timesheets']), function(req, res){
+  res.status(200).send({});
+});
+
+// Create timesheets API endpoint (OLD - ONLY HERE TO SHOW jwtAuthz)
 app.post('/timesheets', checkJwt, jwtAuthz(['create:timesheets']), function(req, res){
   console.log('post api');
   var timesheet = req.body;
@@ -401,6 +353,7 @@ app.post('/timesheets', checkJwt, jwtAuthz(['create:timesheets']), function(req,
   //send the response
   res.status(201).send(timesheet);
 });
+
 
 // main endpoint serves react bundle from /build
 app.get('/*', function(req, res) {
