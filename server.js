@@ -66,9 +66,10 @@ app.use(bodyParser.urlencoded({
 // it will also set the userId property on the request object for future pipeline stages
 const processUser = (req, res, next) => {
   const userId = req.user['sub'];
+  const email = req.user[`${authConfig.audience}/email`];
   const impersonatedUserId = req.headers.impersonateduser;
-  const processingAs = impersonatedUserId ? `processing as ${impersonatedUserId}` : '';
-  console.log(`${req.method} ${req.url}: userId: ${userId} ${processingAs}`);
+  const processingAs = impersonatedUserId ? `, processing as ${impersonatedUserId}` : '';
+  console.log(`${req.method} ${req.url}: userId: ${userId} email: ${email}${processingAs}`);
   req.userId = impersonatedUserId || userId;
   next();
 };
