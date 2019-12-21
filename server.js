@@ -149,6 +149,7 @@ const storeMetadata = async (
 // Get google api data endpoint
 app.get('/google', checkJwt, processUser, function(req, res){
   const refresh = req.query.refresh || false;  
+/* disable the calendar API
   getData(
     res, 
     req.userId, 
@@ -156,6 +157,9 @@ app.get('/google', checkJwt, processUser, function(req, res){
     null,     // default entity name
     [req.userId], // parameter array
     refresh);
+    */
+   // return an empty result set
+   res.status(200).send([]); 
 });
 
 // Get facebook api data endpoint
