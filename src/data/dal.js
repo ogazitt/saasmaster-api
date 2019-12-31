@@ -7,6 +7,7 @@
 //   storeMetadata: store metadata for a particular entity
 
 const database = require('./database');
+const datapipeline = require('./datapipeline');
 const sentiment = require('../services/sentiment');
 
 // retrieve an entity and its metadata - from cache or from the provider
@@ -76,6 +77,14 @@ exports.getData = async (userId, provider, entity, params, forceRefresh = false)
 // if passed in, range should be [start, end] where both are integer milliseconds after epoch
 exports.getHistory = async (userId, range) => {
   try {
+    // check if refreshHistory flag is set, and if so, refresh history and remove flag
+    const refreshHistory = await database.getUserData(userId, database.refreshHistory);
+    if (refreshHistory) {
+      await datapipeline.refreshHistory(userId);
+      await database.removeConnection(userId, database.refreshHistory);
+    }
+
+    // retrieve history and filter for range
     const history = await database.query(userId, database.history);
     let result = history;
     if (range) {

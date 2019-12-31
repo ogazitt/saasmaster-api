@@ -298,8 +298,16 @@ app.post('/link', checkJwt, function(req, res){
   console.log(`POST /link: ${action} ${userId}, ${secondaryUserId}`);
 
   const link = async () => {
+    // link accounts
     const data = await auth0.linkAccounts(userId, secondaryUserId);
-    res.status(200).send(data || { message: 'link failed' });
+
+    // set refresh history flag
+    if (data) {
+      await database.setUserData(userId, database.refreshHistory, { refresh: true });
+      res.status(200).send(data);  
+    } else {
+      res.status(200).send({ message: 'link failed' });
+    }
   }
 
   const unlink = async () => {

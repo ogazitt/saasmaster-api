@@ -36,6 +36,7 @@ exports.loadSection = 'load';
 exports.snapshotSection = 'snapshot';
 exports.lastUpdatedTimestamp = 'lastUpdatedTimestamp';
 exports.inProgress = 'inProgress';
+exports.refreshHistory = 'refreshHistory';
 
 // set the provider
 var provider = providers['firestore']

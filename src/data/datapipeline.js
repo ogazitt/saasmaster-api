@@ -3,6 +3,7 @@
 // exports:
 //   createDataPipeline: create pubsub machinery for data pipeine
 //   messageHandler: event handler for dispatching messages coming in through the pubsub system
+//   refreshHistory: invoke snapshot pipeline for a specific user
 
 const database = require('./database');
 const providers = require('../providers/providers');
@@ -128,6 +129,11 @@ exports.messageHandler = async (dataBuffer) => {
   }
 }
 
+// refresh history for a user by invoking the snapshot pipeline for that user
+exports.refreshHistory = async (userId) => {
+  await snapshotPipeline(userId);
+}
+
 // wrapper handler for invoking specific actions (passed in as 'handler')
 const baseHandler = async (sectionName, interval, handler, data) => {
   try {
@@ -229,10 +235,10 @@ const loadPipeline = async () => {
 
 // invokes the snapshot pipeline, which will take a snapshot of each user's 
 // metadata and store it as the daily snapshot 
-const snapshotPipeline = async () => {
+const snapshotPipeline = async (userId = null) => {
   try {
-    // get all the users in the database
-    const users = await database.getAllUsers();
+    // if userId was passed, use it, otherwise get all the users in the database
+    const users = userId ? [userId] : await database.getAllUsers();
 
     // loop over the users in parallel
     await Promise.all(users.map(async userId => {
