@@ -128,6 +128,26 @@ exports.storeMetadata = async (userId, provider, entity, metadata) => {
   }
 }
 
+// retrieve all metadata for all data entities 
+exports.getProfile = async (userId) => {
+  try {
+    const profile = await database.getUserData(userId, database.profile);
+    return profile;
+  } catch (error) {
+    console.log(`getProfile: caught exception: ${error}`);
+    return null;
+  }
+}
+
+// store metadata for a particular data entity
+exports.storeProfile = async (userId, profile) => {
+  try {
+    await database.setUserData(userId, database.profile, profile);
+  } catch (error) {
+    console.log(`storeProfile: caught exception: ${error}`);
+  }
+}
+
 // call the provider to retrieve the entity
 const callProvider = async (provider, params) => {
   try {

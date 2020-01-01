@@ -277,10 +277,27 @@ app.get('/history', checkJwt, processUser, function(req, res){
 // Get profile API endpoint
 app.get('/profile', checkJwt, processUser, function(req, res){
   const returnProfile = async () => {
-    const profile = await auth0.getAuth0Profile(req.userId) || {};
+    // retrieve the profile data from the app and from auth0 
+    const appProfile = await dal.getProfile(req.userId) || {};
+    const auth0profile = await auth0.getAuth0Profile(req.userId);
+
+    // create a consolidated profile with app data overwriting auth0 data
+    const profile = {...auth0profile, ...appProfile};
+
+    // ensure the [identities] come fresh from auth0 
+    profile.identities = auth0profile.identities;
     res.status(200).send(profile);
   }
   returnProfile();
+});
+
+// Post profile API endpoint
+app.post('/profile', checkJwt, processUser, function(req, res){
+  const storeProfile = async () => {
+    await dal.storeProfile(req.userId, req.body);
+    res.status(200).send({ message: 'success' });
+  }
+  storeProfile();
 });
 
 // Link API endpoint

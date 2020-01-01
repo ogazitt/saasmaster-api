@@ -37,6 +37,7 @@ exports.snapshotSection = 'snapshot';
 exports.lastUpdatedTimestamp = 'lastUpdatedTimestamp';
 exports.inProgress = 'inProgress';
 exports.refreshHistory = 'refreshHistory';
+exports.profile = 'profile';
 
 // set the provider
 var provider = providers['firestore']
@@ -105,7 +106,7 @@ exports.getUserData = async (userId, connection) => {
 // store user data by userid
 exports.setUserData = async (
   userId,                // userid to store data for
-  connection = 'google', // which connection to use
+  connection,            // which connection to use
   data) => {             // data to store
   return await provider.setUserData(userId, connection, data)
 }
