@@ -285,7 +285,9 @@ app.get('/profile', checkJwt, processUser, function(req, res){
     const profile = {...auth0profile, ...appProfile};
 
     // ensure the [identities] come fresh from auth0 
-    profile.identities = auth0profile.identities;
+    if (auth0profile && auth0profile.identities) {
+      profile.identities = auth0profile.identities;
+    }
     res.status(200).send(profile);
   }
   returnProfile();
