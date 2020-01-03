@@ -13,7 +13,8 @@
     "start:prod": "NODE_ENV=prod node server.js",
     "build-spa": "cd ../saasmaster && npm run build",
     "copy": "cp -r ../saasmaster/build/* build",
-    "build": "scripts/build.sh",
+    "build:dev": "PROJ=saasmaster SVC=saasmaster-api scripts/build.sh",
+    "build:prod": "PROJ=saasmaster-prod SVC=saasmaster scripts/build.sh",
     "deploy": "scripts/deploy.sh",
     "push": "npm run build-spa && npm run copy && npm run build && npm run deploy",
     "test": "echo \"Error: no test specified\" && exit 1"

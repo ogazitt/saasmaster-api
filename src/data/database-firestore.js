@@ -1,12 +1,13 @@
 // a firestore-based implementation of the database API
 
 const Firestore = require('@google-cloud/firestore');
+const environment = require('../services/environment');
+const cloudConfigFile = environment.getCloudPlatformConfigFile();
+const projectId = environment.getProjectId();
 
-// note - keyFilename below assumes a path relative to the app root,
-//   NOT the current directory
 const db = new Firestore({
-  projectId: 'saasmaster',
-  keyFilename: './config/firestore_config.json',
+  projectId: projectId,
+  keyFilename: cloudConfigFile,
 });
 
 var users = db.collection('users');

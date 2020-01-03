@@ -31,7 +31,7 @@ exports.createDataPipeline = async (env) => {
     const serviceAccount = 'cloud-run-pubsub-invoker@saasmaster.iam.gserviceaccount.com';
 
     // get the data pipeline system info object
-    const dataPipelineObject = await database.getUserData(database.systemInfo, database.dataPipelineSection);
+    const dataPipelineObject = await database.getUserData(database.systemInfo, database.dataPipelineSection) || {};
 
     // handle prod environent
     if (env === 'prod') {

@@ -7,8 +7,9 @@
 // unlinkAccounts(): unlink a primary and a secondary account
 
 const axios = require('axios');
-const authConfig = require('../../config/auth_config.json');
 const database = require('../data/database');
+const environment = require('./environment');
+const auth0Config = environment.getConfig(environment.auth0);
 
 // get a user's Auth0 profile from the management API
 exports.getAuth0Profile = async (userId) => {
@@ -36,12 +37,12 @@ exports.getAuth0Profile = async (userId) => {
 // get a management API access token
 exports.getManagementAPIAccessToken = async () => {
   try {
-    const url = `https://${authConfig.domain}/oauth/token`;
+    const url = `https://${auth0Config.domain}/oauth/token`;
     const headers = { 'content-type': 'application/json' };
     const body = { 
-      client_id: authConfig.client_id,
-      client_secret: authConfig.client_secret,
-      audience: `https://${authConfig.domain}/api/v2/`,
+      client_id: auth0Config.client_id,
+      client_secret: auth0Config.client_secret,
+      audience: `https://${auth0Config.domain}/api/v2/`,
       grant_type: 'client_credentials'
     };
 
@@ -75,7 +76,7 @@ exports.linkAccounts = async (primaryUserId, secondaryUserId) => {
     // get provider|userId out of compound userId passed in
     [provider, userId] = secondaryUserId.split('|');
 
-    const url = `https://${authConfig.domain}/api/v2/users/${primaryUserId}/identities`;
+    const url = `https://${auth0Config.domain}/api/v2/users/${primaryUserId}/identities`;
     const headers = { 
       'content-type': 'application/json',
       'authorization': `Bearer ${managementToken}`      
@@ -117,7 +118,7 @@ exports.unlinkAccounts = async (primaryUserId, secondaryUserId) => {
     // get provider|userId out of compound userId passed in
     [provider, userId] = secondaryUserId.split('|');
 
-    const url = `https://${authConfig.domain}/api/v2/users/${primaryUserId}/identities/${provider}/${userId}`;
+    const url = `https://${auth0Config.domain}/api/v2/users/${primaryUserId}/identities/${provider}/${userId}`;
     const headers = { 
       'content-type': 'application/json',
       'authorization': `Bearer ${managementToken}`      
@@ -145,7 +146,7 @@ exports.unlinkAccounts = async (primaryUserId, secondaryUserId) => {
 // get Auth0 profile information for a specific userId, using the mgmt API token
 const getAuth0ProfileInfo = async (userId, managementToken) => {
   try {
-    const url = encodeURI(`https://${authConfig.domain}/api/v2/users/${userId}`);
+    const url = encodeURI(`https://${auth0Config.domain}/api/v2/users/${userId}`);
     const headers = { 
       'content-type': 'application/json',
       'authorization': `Bearer ${managementToken}`

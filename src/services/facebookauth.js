@@ -4,8 +4,9 @@
 //   getFacebookAccessInfo(userId): abstracts all logic to retrieve a FB access token / userid
 
 const database = require('../data/database');
-const authConfig = require('../../config/auth_config.json');
 const auth0 = require('../services/auth0');
+const environment = require('./environment');
+const facebookConfig = environment.getConfig(environment.facebook);
 
 exports.getFacebookAccessInfo = async (userId) => {
 
@@ -91,8 +92,8 @@ const getLongLivedFacebookAccessToken = async(userId, accessToken) => {
 
   try {
     const url = `https://graph.facebook.com/oauth/access_token?             
-client_id=${authConfig.fb_client_id}&
-client_secret=${authConfig.fb_client_secret}&
+client_id=${facebookConfig.fb_client_id}&
+client_secret=${facebookConfig.fb_client_secret}&
 grant_type=fb_exchange_token&
 fb_exchange_token=${accessToken}`;
 

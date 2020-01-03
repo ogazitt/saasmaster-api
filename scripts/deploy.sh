@@ -1,4 +1,4 @@
 #!/bin/bash
-gcloud beta run deploy saasmaster-api \
-  --image gcr.io/saasmaster/saasmaster-api \
+gcloud beta run deploy $SVC \
+  --image gcr.io/$PROJ/$SVC \
   --platform managed

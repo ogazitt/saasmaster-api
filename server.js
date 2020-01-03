@@ -6,7 +6,16 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const jwtAuthz = require('express-jwt-authz');
 
-const authConfig = require('./config/auth_config.json');
+// get environment (dev or prod) based on environment variable
+const env = process.env.NODE_ENV || 'prod';
+console.log('environment:', env);
+
+// set the environment in the environment service
+const environment = require('./src/services/environment');
+environment.setEnv(env);
+
+// import the auth config based on the environment
+const auth0Config = environment.getConfig(environment.auth0);
 const auth0 = require('./src/services/auth0');
 
 // import providers, database, storage, datapipeline layers
@@ -18,10 +27,6 @@ const datapipeline = require('./src/data/datapipeline');
 
 // import google provider for checking JWT
 const google = require('./src/services/googleauth');
-
-// get environment (dev or prod) based on environment variable
-const env = process.env.NODE_ENV || 'prod';
-console.log('environment:', env);
 
 // get persistence provider based on environment variable
 const persistenceProvider = process.env.PROVIDER || 'firestore';
@@ -47,12 +52,12 @@ const checkJwt = jwt({
     cache: true,
     rateLimit: true,
     jwksRequestsPerMinute: 5,
-    jwksUri: `https://${authConfig.domain}/.well-known/jwks.json`
+    jwksUri: `https://${auth0Config.domain}/.well-known/jwks.json`
   }),
 
   // Validate the audience and the issuer
-  audience: authConfig.audience, 
-  issuer: `https://${authConfig.domain}/`,
+  audience: auth0Config.audience, 
+  issuer: `https://${auth0Config.domain}/`,
   algorithms: [ 'RS256' ]
 });
   
@@ -66,7 +71,7 @@ app.use(bodyParser.urlencoded({
 // it will also set the userId property on the request object for future pipeline stages
 const processUser = (req, res, next) => {
   const userId = req.user['sub'];
-  const email = req.user[`${authConfig.audience}/email`];
+  const email = req.user[`${auth0Config.audience}/email`];
   const impersonatedUserId = req.headers.impersonateduser;
   const processingAs = impersonatedUserId ? `, processing as ${impersonatedUserId}` : '';
   console.log(`${req.method} ${req.url}: userId: ${userId} email: ${email}${processingAs}`);
@@ -377,7 +382,7 @@ app.post('/timesheets', checkJwt, jwtAuthz(['create:timesheets']), function(req,
   console.log('post api');
   var timesheet = req.body;
 
-  var userId = req.user[`${authConfig.audience}/email`];
+  var userId = req.user[`${auth0Config.audience}/email`];
   timesheet.user_id = userId;
 
   // Save the timesheet to the database...

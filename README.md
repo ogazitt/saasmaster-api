@@ -36,15 +36,13 @@ These will build the production (minified) version of the [SaaSMaster](https://g
 and copy the files into the `build` subdirectory.  It assumes that the saasmaster project is in a peer directory to 
 the saasmaster-api project.
 
-### `npm run build` and `npm run deploy`
+### `npm run build:dev | build:prod` and `npm run deploy:dev | deploy:prod`
 
-These will build the Docker container for the API (including the SPA) using Google Cloud Build, and deploy it to 
-Google Cloud Run.
+These will build the Docker container for the API (including the SPA) using Google Cloud Build, and deploy it to Google Cloud Run.  
 
 ### `npm run push` 
 
-This combines the `build-spa`, `copy`, `build`, and `deploy` operations to automate the deployment of the current
-source code with one command.
+This combines the `build-spa`, `copy`, `build`, and `deploy` operations to automate the deployment of the current source code with one command.
 
 ## Directory structure
 
@@ -53,8 +51,9 @@ The app is bootstrapped out of `server.js`, which pulls in all other source depe
 ### `config`
 
 Contains all the config for the project.  These files aren't committed to source control since they contain secrets.
-The API expects an `auth_config.json` file for application keys and secret keys for Auth0, Google, Facebook, Twitter; and a 
-`firebase_config.json` file for the Google Cloud Platform service account used with this application.
+The API expects an `auth0_config_{dev|prod}.json` file for application keys and secret keys for Auth0; 
+a `{google|facebook|twitter}_config.json` for client ID's and secret keys Google, Facebook, Twitter; and a 
+`cloud_platform_config_{dev|prod}.json` file for the Google Cloud Platform service account used with this application.
 
 ### `scripts`
 

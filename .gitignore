@@ -1,6 +1,5 @@
 # secrets
-auth_config.json
-firestore_config.json
+*_config*.json
 
 # build directory contains built react app artifacts
 # they are in a different repo

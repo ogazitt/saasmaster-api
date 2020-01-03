@@ -5,9 +5,10 @@
 //        getTweets(userId): get tweet data for the userId (note - userid is ignored in favor of access token)
 
 const axios = require('axios');
-const authConfig = require('../../config/auth_config.json');
 const oauthSignature = require('oauth-signature');
 const twitterauth = require('../services/twitterauth.js');
+const environment = require('../services/environment');
+const twitterConfig = environment.getConfig(environment.twitter);
 
 // api's defined by this provider
 exports.apis = {
@@ -35,8 +36,8 @@ exports.apis.getTweets.func = async ([userId]) => {
 
     /* couldn't get the twitter javascript client to work :(
     const twitter = new Twitter({
-      consumerKey: authConfig.twitter_consumer_key,
-      consumerSecret: authConfig.twitter_consumer_secret,
+      consumerKey: twitterConfig.twitter_consumer_key,
+      consumerSecret: twitterConfig.twitter_consumer_secret,
       access_token_key: user.accessToken,
       access_token_secrets: user.accessTokenSecret});        
       
@@ -50,7 +51,7 @@ exports.apis.getTweets.func = async ([userId]) => {
     //url = 'https://api.twitter.com/1.1/statuses/mentions_timeline.json?count=5',
     url = 'https://api.twitter.com/1.1/statuses/mentions_timeline.json',
     parameters = {
-      oauth_consumer_key: authConfig.twitter_consumer_key,
+      oauth_consumer_key: twitterConfig.twitter_consumer_key,
       oauth_nonce: 'B1R6tk7SguJ', // BUGBUG: generate new nonce
       oauth_signature_method: 'HMAC-SHA1',
       oauth_timestamp: timestamp,
@@ -58,7 +59,7 @@ exports.apis.getTweets.func = async ([userId]) => {
       oauth_version: '1.0',
       //count: '5'
     },
-    consumerSecret = authConfig.twitter_consumer_secret,
+    consumerSecret = twitterConfig.twitter_consumer_secret,
     tokenSecret = user.accessTokenSecret,
     // generates a RFC 3986 encoded, BASE64 encoded HMAC-SHA1 hash
     encodedSignature = oauthSignature.generate(httpMethod, url, parameters, consumerSecret, tokenSecret),
@@ -69,7 +70,7 @@ exports.apis.getTweets.func = async ([userId]) => {
     // construct authorization header - very order-dependent!
     const headers = { 
       'content-type': 'application/json',
-      'authorization': `OAuth oauth_consumer_key="${authConfig.twitter_consumer_key}",oauth_token="${user.accessToken}",oauth_signature_method="HMAC-SHA1",oauth_timestamp="${timestamp}",oauth_nonce="B1R6tk7SguJ",oauth_version="1.0",oauth_signature="${encodedSignature}"`
+      'authorization': `OAuth oauth_consumer_key="${twitterConfig.twitter_consumer_key}",oauth_token="${user.accessToken}",oauth_signature_method="HMAC-SHA1",oauth_timestamp="${timestamp}",oauth_nonce="B1R6tk7SguJ",oauth_version="1.0",oauth_signature="${encodedSignature}"`
       // 'authorization': `Bearer ${user}`
      };
 

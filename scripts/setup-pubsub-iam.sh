@@ -1,7 +1,12 @@
 #!/bin/bash
+# development
 PROJECT_ID=saasmaster
 PROJECT_NUMBER=1006951261261
 SERVICE_NAME=saasmaster-api
+# production
+PROJECT_ID=saasmaster-prod
+PROJECT_NUMBER=634939719144
+SERVICE_NAME=saasmaster
 
 gcloud projects add-iam-policy-binding $PROJECT_ID \
   --member=serviceAccount:service-$PROJECT_NUMBER@gcp-sa-pubsub.iam.gserviceaccount.com \

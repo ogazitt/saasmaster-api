@@ -1,13 +1,14 @@
 // google authentication utilities
 // 
 // exports:
-//   validateJwt(token): validate bearer token provided by google cloud
 //   getGoogleAccessToken(userId): abstracts all logic to retrieve a google access token
+//   validateJwt(token): validate bearer token provided by google cloud
 
 const axios = require('axios');
 const database = require('../data/database');
-const authConfig = require('../../config/auth_config.json');
 const auth0 = require('../services/auth0');
+const environment = require('./environment');
+const googleConfig = environment.getConfig(environment.google);
 
 const { OAuth2Client } = require('google-auth-library');
 const authClient = new OAuth2Client();
@@ -139,8 +140,8 @@ const getAccessTokenForGoogleRefreshToken = async(userId, refreshToken) => {
       'content-type': 'application/json',
     };
     const body = {
-      client_id: authConfig.google_client_id,
-      client_secret: authConfig.google_client_secret,
+      client_id: googleConfig.google_client_id,
+      client_secret: googleConfig.google_client_secret,
       refresh_token: refreshToken,
       grant_type: 'refresh_token'
     }

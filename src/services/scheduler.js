@@ -3,10 +3,13 @@
 //   createPubSubJob: creates a pub-sub cron job 
 
 const scheduler = require('@google-cloud/scheduler');
-const projectId = 'saasmaster';
+const environment = require('./environment');
+const cloudConfigFile = environment.getCloudPlatformConfigFile();
+const projectId = environment.getProjectId();
+
 const client = new scheduler.CloudSchedulerClient({
   projectId: projectId,
-  keyFilename: './config/firestore_config.json',
+  keyFilename: cloudConfigFile,
 });
 
 // create a pubsub job with the fully-qualified topicname and a default schedule
