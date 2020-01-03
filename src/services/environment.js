@@ -8,6 +8,7 @@
 //   getProjectId(): gets the GCP project ID for the current env (dev | prod)
 //   geteEndpoint(): gets the Google Cloud Run endpoint for the current env (dev | prod)
 //   getServiceAccount(): gets the GCP pub-sub service account for the current env (dev | prod)
+//   getServiceAccount(): gets the GCP service location for the current env (dev | prod)
 
 var environment;
 
@@ -71,4 +72,8 @@ exports.getServiceAccount = () => {
   return serviceAccount;
 }
 
+exports.getLocation = () => {
+  const location = environment === 'dev' ? 'us-central1' : 'us-west2';
+  return location;
+}
 
