@@ -11,6 +11,7 @@ const dataProviders = providers.providers;
 const dal = require('./dal');
 const pubsub = require('../services/pubsub');
 const scheduler = require('../services/scheduler');
+const environment = require('../services/environment');
 
 // base name for pubsub machinery
 const invoke = 'invoke';
@@ -27,8 +28,8 @@ exports.createDataPipeline = async (env) => {
     // set up the topic name, subscription name based on env
     const topicName = `${invoke}-${env}`;
     const subName = `${invoke}-${env}-sub`;
-    const endpoint = `https://saasmaster-api-rlxsdnkh6a-uc.a.run.app/${invoke}`;
-    const serviceAccount = 'cloud-run-pubsub-invoker@saasmaster.iam.gserviceaccount.com';
+    const endpoint = `${environment.getEndpoint()}/${invoke}`;
+    const serviceAccount = environment.getServiceAccount();
 
     // get the data pipeline system info object
     const dataPipelineObject = await database.getUserData(database.systemInfo, database.dataPipelineSection) || {};

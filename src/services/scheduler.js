@@ -15,7 +15,7 @@ const client = new scheduler.CloudSchedulerClient({
 // create a pubsub job with the fully-qualified topicname and a default schedule
 // default cron schedule: every hour on the hour
 exports.createPubSubJob = async (jobName, topicName, action, schedule = '0 */1 * * *') => {
-  const parent = client.locationPath('saasmaster', 'us-central1');
+  const parent = client.locationPath(projectId, 'us-central1');
   const name = `${parent}/jobs/${jobName}`;
   const topic = `projects/${projectId}/topics/${topicName}`;
 

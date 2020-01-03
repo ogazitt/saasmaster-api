@@ -49,7 +49,7 @@ exports.validateJwt = async (token) => {
   try {
     await authClient.verifyIdToken({
       idToken: token,
-      audience: 'https://saasmaster-api-rlxsdnkh6a-uc.a.run.app/invoke',
+      audience: `${environment.getEndpoint()}/invoke`,
     });
 
     // if the call succeeds, validation passed

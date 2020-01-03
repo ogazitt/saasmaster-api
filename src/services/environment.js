@@ -5,7 +5,9 @@
 //   setEnv(): sets the current environment (dev | prod)
 //   getConfig(type): gets the config of type 'type' for the current env (dev | prod)
 //   getCloudPlatformConfigFile(): gets the GCP config for the current env (dev | prod)
-//   getProjectid(): gets the GCP project ID for the current env (dev | prod)
+//   getProjectId(): gets the GCP project ID for the current env (dev | prod)
+//   geteEndpoint(): gets the Google Cloud Run endpoint for the current env (dev | prod)
+//   getServiceAccount(): gets the GCP pub-sub service account for the current env (dev | prod)
 
 var environment;
 
@@ -55,6 +57,18 @@ exports.getCloudPlatformConfigFile = () => {
 exports.getProjectId = () => {
   const projectId = environment === 'dev' ? 'saasmaster' : `saasmaster-${environment}`;
   return projectId;
+}
+
+exports.getEndpoint = () => {
+  const endpoint = environment === 'dev' ? 'https://saasmaster-api-rlxsdnkh6a-uc.a.run.app' 
+                                         : 'https://saasmaster-klpktfefsa-uc.a.run.app';
+  return endpoint;
+}
+
+exports.getServiceAccount = () => {
+  const projectId = exports.getProjectId();
+  const serviceAccount = `cloud-run-pubsub-invoker@${projectId}.iam.gserviceaccount.com`;
+  return serviceAccount;
 }
 
 

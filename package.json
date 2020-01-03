@@ -15,8 +15,10 @@
     "copy": "cp -r ../saasmaster/build/* build",
     "build:dev": "PROJ=saasmaster SVC=saasmaster-api scripts/build.sh",
     "build:prod": "PROJ=saasmaster-prod SVC=saasmaster scripts/build.sh",
-    "deploy": "scripts/deploy.sh",
-    "push": "npm run build-spa && npm run copy && npm run build && npm run deploy",
+    "deploy:dev": "PROJ=saasmaster SVC=saasmaster-api scripts/deploy.sh",
+    "deploy:prod": "PROJ=saasmaster-prod SVC=saasmaster scripts/deploy.sh",
+    "push:dev": "npm run build-spa && npm run copy && npm run build:dev && npm run deploy:dev",
+    "push:prod": "npm run build-spa && npm run copy && npm run build:prod && npm run deploy:prod",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Omri Gazitt",
