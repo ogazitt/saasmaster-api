@@ -11,6 +11,13 @@ const googleauth = require('../services/googleauth.js');
 // api's defined by this provider
 // the actual function is added after it is defined below
 exports.apis = {
+  placeholder: {
+    name: 'placeholder',
+    provider: 'google-oauth2',
+    entity: 'google-oauth2:placeholder',
+    arrayKey: 'items',
+    itemKey: 'id'
+  },
   getCalendarData: {
     name: 'getCalendarData',
     provider: 'google-oauth2',
@@ -22,6 +29,23 @@ exports.apis = {
     name: 'getGoogleLocation',
     provider: 'google-oauth2',
   },
+};
+
+exports.apis.placeholder.func = async ([userId]) => {
+  try {
+    // the placeholder API just serves to go through the access token mechanics
+    const accessToken = await googleauth.getGoogleAccessToken(userId);
+    if (!accessToken) {
+      console.log('placeholder: getGoogleAccessToken failed');
+      return null;
+    }
+
+    return null;
+  } catch (error) {
+    await error.response;
+    console.log(`placeholder: caught exception: ${error}`);
+    return null;
+  }
 };
 
 exports.apis.getCalendarData.func = async ([userId]) => {
