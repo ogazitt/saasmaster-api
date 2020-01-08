@@ -199,6 +199,7 @@ app.get('/facebook/reviews/:pageId', checkJwt, processUser, function(req, res){
 //       { id: key2, meta1: value1, meta2: value2, ... },
 //     ]
 app.post('/facebook/reviews/:pageId', checkJwt, processUser, function (req, res){
+  const pageId = req.params.pageId;
   storeMetadata(
     res,
     req.userId,
