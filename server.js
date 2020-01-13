@@ -7,12 +7,16 @@ const bodyParser = require('body-parser');
 const jwtAuthz = require('express-jwt-authz');
 
 // get environment (dev or prod) based on environment variable
-const env = process.env.NODE_ENV || 'prod';
+const env = process.env.ENV || 'prod';
 console.log('environment:', env);
+const configuration = env === 'devhosted' ? 'prod' : env;
+console.log('configuration:', configuration);
+const account = env === 'devhosted' ? 'dev' : env;
+console.log('account:', account);
 
 // set the environment in the environment service
 const environment = require('./src/services/environment');
-environment.setEnv(env);
+environment.setEnv(account);
 
 // import the auth config based on the environment
 const auth0Config = environment.getConfig(environment.auth0);
@@ -35,10 +39,10 @@ console.log('provider:', persistenceProvider);
 
 // set database persistence layer based on provider and environment
 database.setProvider(persistenceProvider);
-database.setEnv(env);
+database.setEnv(configuration);
 
 // create the data pipeline based on the environment
-datapipeline.createDataPipeline(env);
+datapipeline.createDataPipeline(configuration);
 
 // create a new express app
 const app = express();

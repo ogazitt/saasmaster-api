@@ -4,7 +4,7 @@
 const { PubSub } = require('@google-cloud/pubsub');
 
 // get the environment as an env variable
-const env = process.env.NODE_ENV || 'prod';
+const env = process.env.ENV || 'prod';
 console.log('environment:', env);
 
 // set the environment in the environment service
