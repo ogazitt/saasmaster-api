@@ -1,6 +1,7 @@
 // a firestore-based implementation of the database API
 
 const Firestore = require('@google-cloud/firestore');
+const dbconstants = require('./database-constants');
 const environment = require('../services/environment');
 const cloudConfigFile = environment.getCloudPlatformConfigFile();
 const projectId = environment.getProjectId();
@@ -93,7 +94,7 @@ exports.query = async (userId, collection, field, value) => {
     }
 
     // get list of documents in snapshot, except __invoke_info
-    const docArray = snapshot.docs.filter(item => item.id !== '__invoke_info');
+    const docArray = snapshot.docs.filter(item => item.id !== dbconstants.invokeInfo);
 
     // create a combined array with an entry from each document
     const array = docArray.map(doc => doc.data());
@@ -111,7 +112,7 @@ exports.query = async (userId, collection, field, value) => {
 exports.queryGroup = async (userId, collection, field, value) => {
   try {
     const col = db.collectionGroup(collection);
-    let query = col.where('userId', '==', userId);
+    let query = col.where(dbconstants.metadataUserIdField, '==', userId);
     if (field && value) {
       // a query was passed in, so chain it to the query
       query = query.where(field, '==', value);

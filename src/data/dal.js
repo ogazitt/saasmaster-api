@@ -7,6 +7,7 @@
 //   storeMetadata: store metadata for a particular entity
 
 const database = require('./database');
+const dbconstants = require('./database-constants');
 const datapipeline = require('./datapipeline');
 const sentiment = require('../services/sentiment');
 
@@ -22,7 +23,7 @@ exports.getData = async (userId, provider, entity, params, forceRefresh = false)
     }
 
     // get the __invoke_info document
-    const invokeInfo = await database.getDocument(userId, entityName, database.invokeInfo) || {};
+    const invokeInfo = await database.getDocument(userId, entityName, dbconstants.invokeInfo) || {};
     const lastRetrieved = invokeInfo && invokeInfo.lastRetrieved;
     const now = new Date().getTime();
     const anHourAgo = now - 3600000;
@@ -78,14 +79,14 @@ exports.getData = async (userId, provider, entity, params, forceRefresh = false)
 exports.getHistory = async (userId, range) => {
   try {
     // check if refreshHistory flag is set, and if so, refresh history and remove flag
-    const refreshHistory = await database.getUserData(userId, database.refreshHistory);
+    const refreshHistory = await database.getUserData(userId, dbconstants.refreshHistory);
     if (refreshHistory) {
       await datapipeline.refreshHistory(userId);
-      await database.removeConnection(userId, database.refreshHistory);
+      await database.removeConnection(userId, dbconstants.refreshHistory);
     }
 
     // retrieve history and filter for range
-    const history = await database.query(userId, database.history);
+    const history = await database.query(userId, dbconstants.history);
     let result = history;
     if (range) {
       const [start, end] = range;
@@ -131,7 +132,7 @@ exports.storeMetadata = async (userId, provider, entity, metadata) => {
 // retrieve all metadata for all data entities 
 exports.getProfile = async (userId) => {
   try {
-    const profile = await database.getUserData(userId, database.profile);
+    const profile = await database.getUserData(userId, dbconstants.profile);
     return profile;
   } catch (error) {
     console.log(`getProfile: caught exception: ${error}`);
@@ -142,7 +143,7 @@ exports.getProfile = async (userId) => {
 // store metadata for a particular data entity
 exports.storeProfile = async (userId, profile) => {
   try {
-    await database.setUserData(userId, database.profile, profile);
+    await database.setUserData(userId, dbconstants.profile, profile);
   } catch (error) {
     console.log(`storeProfile: caught exception: ${error}`);
   }
@@ -192,7 +193,7 @@ const mergeMetadataWithData = (provider, data, metadata) => {
       const id = dataElement[itemKeyField];
 
       // find the metadata element corresponding to the data element, using id
-      const metadataArray = metadata.filter(m => m.id === id);
+      const metadataArray = metadata.filter(m => m[dbconstants.metadataIdField] === id);
       const metadataElement = metadataArray.length > 0 ? metadataArray[0] : {};
 
       // combine metadata and data into a single object (metadata first)
@@ -212,7 +213,7 @@ const mergeMetadataWithData = (provider, data, metadata) => {
 const queryMetadata = async (userId, entity) => {
   try {
     // construct the path to the invokeInfo document 
-    const path = `${userId}/${entity}/${database.invokeInfo}`;
+    const path = `${userId}/${entity}/${dbconstants.invokeInfo}`;
 
     // query existing metadata from metadata collection under invokeInfo doc
     const metadata = await database.query(path, database.metadata);
@@ -250,11 +251,11 @@ const retrieveSentimentMetadata = async (userId, provider, data, metadata) => {
       const sentimentText = element[sentimentTextField];
 
       // get current metadata element, or initialze with a default if it doesn't exist
-      const metadataArray = metadata.filter(m => m.id === id);
+      const metadataArray = metadata.filter(m => m[dbconstants.metadataIdField] === id);
       const metadataElement = metadataArray && metadataArray.length > 0 && metadataArray[0] || {};
 
       // initiailize current sentiment
-      const currentSentiment = metadataElement.__sentiment;
+      const currentSentiment = metadataElement[dbconstants.metadataSentimentField];
 
       // check to see whether the current sentiment has not yet been retrieved
       if (currentSentiment === undefined) {
@@ -276,17 +277,19 @@ const retrieveSentimentMetadata = async (userId, provider, data, metadata) => {
           }
         }
 
-        // create a combined metadata entry, with text, sentiment, and core fields
+        // define the new metadata element
+        const newMetadataElement = {};
+        newMetadataElement[dbconstants.metadataIdField] = id;
+        newMetadataElement[dbconstants.metadataUserIdField] = userId;
+        newMetadataElement[dbconstants.metadataProviderField] = provider.provider;
+        newMetadataElement[dbconstants.metadataSentimentField] = rating;
+        newMetadataElement[dbconstants.metadataSentimentScoreField] = score;
+        newMetadataElement[dbconstants.metadataTextField] = text;
+        
+        // create a combined metadata entry
         const metadataEntry = { 
           ...metadataElement, 
-          ...{ 
-            id: id, 
-            userId: userId, 
-            provider: provider.provider, 
-            text: text,
-            __sentiment: rating,
-            __sentimentScore: score
-          } 
+          ...newMetadataElement
         };
         result.push(metadataEntry);
         retrievedSentiment = true;
@@ -319,7 +322,7 @@ const storeData = async (userId, provider, entity, params, data, invokeInfo) => 
     invokeInfo.lastRetrieved = new Date().getTime();
 
     // store the invocation information as a well-known document (__invoke_info) in the collection
-    await database.storeDocument(userId, entity, database.invokeInfo, invokeInfo);
+    await database.storeDocument(userId, entity, dbconstants.invokeInfo, invokeInfo);
 
     // shred the data returned into a batch of documents in the collection
     await database.storeBatch(userId, entity, data, provider.itemKey);
@@ -333,10 +336,10 @@ const storeData = async (userId, provider, entity, params, data, invokeInfo) => 
 const storeMetadata = async (userId, entity, metadata) => {
   try {
     // construct the path to the invokeInfo document 
-    const path = `${userId}/${entity}/${database.invokeInfo}`;
+    const path = `${userId}/${entity}/${dbconstants.invokeInfo}`;
 
     // store the metadata as a batch of documents
-    await database.storeBatch(path, database.metadata, metadata, 'id', true);
+    await database.storeBatch(path, database.metadata, metadata, dbconstants.metadataIdField, true);
   } catch (error) {
     console.log(`updateMetadata: caught exception: ${error}`);
     return null;
@@ -350,19 +353,25 @@ const updateMetadata = async (userId, entity, provider, metadata) => {
     const existingMetadata = await queryMetadata(userId, entity);
     
     // create a combined, de-duped list of keys
-    const existingKeys = existingMetadata && existingMetadata.map(m => m.id);
-    const newKeys = metadata && metadata.map(m => m.id);
+    const existingKeys = existingMetadata && existingMetadata.map(m => m[dbconstants.metadataIdField]);
+    const newKeys = metadata && metadata.map(m => m[dbconstants.metadataIdField]);
     const combinedKeys = [...new Set([...existingKeys, ...newKeys])];
 
     // construct a new array with the combined objects
     const result = combinedKeys.map(key => {
-      const existingResult = existingMetadata.filter(m => m.id === key);
+      const existingResult = existingMetadata.filter(m => m[dbconstants.metadataIdField] === key);
       const existingEntry = existingResult && existingResult.length > 0 ? existingResult[0] : {};
-      const newResult = metadata.filter(m => m.id === key);
+      const newResult = metadata.filter(m => m[dbconstants.metadataIdField] === key);
       const newEntry = newResult && newResult.length > 0 ? newResult[0] : {};
 
-      // merge existing and new entry, and always store id and userId
-      return { ...existingEntry, ...newEntry, id: key, userId: userId, provider: provider.provider };
+      // define the core metadata element
+      const coreEntry = {};
+      coreEntry[dbconstants.metadataIdField] = key;
+      coreEntry[dbconstants.metadataUserIdField] = userId;
+      coreEntry[dbconstants.metadataProviderField] = provider.provider;
+      
+      // merge existing and new entry, and always include core fields
+      return { ...existingEntry, ...newEntry, ...coreEntry };
     });
 
     // store updated metadata

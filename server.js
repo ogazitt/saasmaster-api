@@ -22,6 +22,7 @@ const auth0 = require('./src/services/auth0');
 const providers = require('./src/providers/providers');
 const dataProviders = providers.providers;
 const database = require('./src/data/database');
+const dbconstants = require('./src/data/database-constants');
 const dal = require('./src/data/dal');
 const datapipeline = require('./src/data/datapipeline');
 
@@ -326,7 +327,7 @@ app.post('/link', checkJwt, function(req, res){
 
     // set refresh history flag
     if (data) {
-      await database.setUserData(userId, database.refreshHistory, { refresh: true });
+      await database.setUserData(userId, dbconstants.refreshHistory, { refresh: true });
       res.status(200).send(data);  
     } else {
       res.status(200).send({ message: 'link failed' });

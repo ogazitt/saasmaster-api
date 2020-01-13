@@ -6,6 +6,7 @@
 //   refreshHistory: invoke snapshot pipeline for a specific user
 
 const database = require('./database');
+const dbconstants = require('./database-constants');
 const providers = require('../providers/providers');
 const dataProviders = providers.providers;
 const dal = require('./dal');
@@ -32,7 +33,7 @@ exports.createDataPipeline = async (env) => {
     const serviceAccount = environment.getServiceAccount();
 
     // get the data pipeline system info object
-    const dataPipelineObject = await database.getUserData(database.systemInfo, database.dataPipelineSection) || {};
+    const dataPipelineObject = await database.getUserData(dbconstants.systemInfo, dbconstants.dataPipelineSection) || {};
 
     // handle prod environent
     if (env === 'prod') {
@@ -75,7 +76,7 @@ exports.createDataPipeline = async (env) => {
     await createScheduler(env, dataPipelineObject, actions.snapshot, '0 1 * * *');  // every day at 1am
 
     // store the data pipeline system info object
-    await database.setUserData(database.systemInfo, database.dataPipelineSection, dataPipelineObject);
+    await database.setUserData(dbconstants.systemInfo, dbconstants.dataPipelineSection, dataPipelineObject);
   } catch (error) {
     console.log(`createDataPipeline: caught exception: ${error}`);
     return null;
@@ -132,7 +133,7 @@ exports.messageHandler = async (dataBuffer) => {
 
 // refresh history for a user by invoking the snapshot pipeline for that user
 exports.refreshHistory = async (userId) => {
-  await snapshotPipeline(userId);
+  await snapshotPipeline({ userId: userId });
 }
 
 // wrapper handler for invoking specific actions (passed in as 'handler')
@@ -142,18 +143,18 @@ const baseHandler = async (sectionName, interval, handler, data) => {
     const now = new Date().getTime();
 
     // retrieve last data pipeline run timestamp, and whether we are already in progress
-    const sectionObject = await database.getUserData(database.systemInfo, sectionName) || {};
-    const timestamp = sectionObject[database.lastUpdatedTimestamp] || 
+    const sectionObject = await database.getUserData(dbconstants.systemInfo, sectionName) || {};
+    const timestamp = sectionObject[dbconstants.lastUpdatedTimestamp] || 
           now - interval;  // if the timestamp doesn't exist, set it to 1 hour ago
-    const inProgress = sectionObject[database.inProgress] || false;
+    const inProgress = sectionObject[dbconstants.inProgress] || false;
     
     // if the timestamp is older than 59 minutes, invoke the data load pipeline
     if (isStale(timestamp, interval) && !inProgress) {
       console.log(`invoking ${sectionName} pipeline`);
 
       // set a flag indicating data pipeline is "inProgress"
-      sectionObject[database.inProgress] = true;
-      await database.setUserData(database.systemInfo, sectionName, sectionObject);
+      sectionObject[dbconstants.inProgress] = true;
+      await database.setUserData(dbconstants.systemInfo, sectionName, sectionObject);
 
       // invoke data pipeline
       await handler(data);
@@ -166,14 +167,14 @@ const baseHandler = async (sectionName, interval, handler, data) => {
 // pubsub handler for invoking the load pipeline
 const loadHandler = async (data) => {
   const hr1 = 60 * 60000;
-  await baseHandler(database.loadSection, hr1, loadPipeline, data);
+  await baseHandler(dbconstants.loadSection, hr1, loadPipeline, data);
 }
 handlers[actions.load] = loadHandler;
 
 // pubsub handler for invoking the snapshot pipeline
 const snapshotHandler = async (data) => {
   const day1 = 24 * 60 * 60000;
-  await baseHandler(database.snapshotSection, day1, snapshotPipeline, data);
+  await baseHandler(dbconstants.snapshotSection, day1, snapshotPipeline, data);
 }
 handlers[actions.snapshot] = snapshotHandler;
 
@@ -192,7 +193,11 @@ const loadPipeline = async () => {
     await Promise.all(users.map(async userId => {
       try {
         // retrieve all the collections associated with the user
-        const collections = await database.getUserCollections(userId);
+        let collections = await database.getUserCollections(userId);
+        if (collections) {
+          // filter out 'history' collection
+          collections = collections.filter(c => c !== dbconstants.history);
+        }
         console.log(`user: ${userId} collections: ${collections}`);
 
         // if no results, nothing to do
@@ -203,7 +208,7 @@ const loadPipeline = async () => {
         // retrieve each of the collections in parallel
         await Promise.all(collections.map(async collection => {
           // retrieve the __invoke_info document for the collection
-          const invokeInfo = await database.getDocument(userId, collection, database.invokeInfo);
+          const invokeInfo = await database.getDocument(userId, collection, dbconstants.invokeInfo);
 
           // validate invocation info
           if (invokeInfo && invokeInfo.provider && invokeInfo.name) {
@@ -224,7 +229,7 @@ const loadPipeline = async () => {
     }));
 
     // update the system information file load section 
-    updateSystemInfoSection(database.loadSection);
+    updateSystemInfoSection(dbconstants.loadSection);
 
     const currentTime = new Date();
     console.log(`loadPipeline: completed at ${currentTime.toLocaleTimeString()}`);
@@ -236,17 +241,18 @@ const loadPipeline = async () => {
 
 // invokes the snapshot pipeline, which will take a snapshot of each user's 
 // metadata and store it as the daily snapshot 
-const snapshotPipeline = async (userId = null) => {
+const snapshotPipeline = async (data) => {
   try {
+
     // if userId was passed, use it, otherwise get all the users in the database
-    const users = userId ? [userId] : await database.getAllUsers();
+    const users = data && data.userId ? [data.userId] : await database.getAllUsers();
 
     // loop over the users in parallel
     await Promise.all(users.map(async userId => {
       try {
         // retrieve all the metadata associated with the user
         const metadata = await dal.getMetadata(userId);
-        const providers = metadata && metadata.map(m => m.provider);
+        const providers = metadata && metadata.map(m => m[dbconstants.metadataProviderField]);
         const providerSet = [...new Set(providers)];
         
         // if no results, nothing to do
@@ -265,7 +271,7 @@ const snapshotPipeline = async (userId = null) => {
           // create an array that contains the rating counts for each rating (positive, neutral, negative)
           // it will look something like [ 5, 3, 2 ]
           const ratingCounts = ratings.map(rating => 
-            metadata.filter(m => m.provider === provider && m.__sentiment === rating).length);
+            metadata.filter(m => m.__provider === provider && m.__sentiment === rating).length);
 
           const historySection = {};
           for (const index in ratings) {
@@ -276,8 +282,8 @@ const snapshotPipeline = async (userId = null) => {
 
           // calculate the aggregate score from all the sentiment scores for this provider
           const providerScore = metadata.reduce((acc, curr) => acc + 
-            (curr.provider === provider ? curr.__sentimentScore : 0), 0);
-          const averageScore = providerScore / metadata.filter(m => m.provider === provider).length;
+            (curr.__provider === provider ? curr.__sentimentScore : 0), 0);
+          const averageScore = providerScore / metadata.filter(m => m.__provider === provider).length;
           historySection.averageScore = averageScore;
 
           history[provider] = historySection;
@@ -304,7 +310,7 @@ const snapshotPipeline = async (userId = null) => {
         console.log(`user: ${userId} snapsnot: ${JSON.stringify(history)}`);
 
         // store the snapshot document with the timestamp as the document name
-        await database.storeDocument(userId, database.history, timestamp.toString(), history);
+        await database.storeDocument(userId, dbconstants.history, timestamp.toString(), history);
 
       } catch (error) {
         console.log(`snapshotPipeline: user ${userId} caught exception: ${error}`);        
@@ -312,7 +318,7 @@ const snapshotPipeline = async (userId = null) => {
     }));
 
     // update the system information file snapshot section 
-    updateSystemInfoSection(database.snapshotSection);
+    updateSystemInfoSection(dbconstants.snapshotSection);
 
     const currentTime = new Date();
     console.log(`snapshotPipeline: completed at ${currentTime.toLocaleTimeString()}`);
@@ -327,9 +333,9 @@ const updateSystemInfoSection = async (sectionName) => {
     // update last updated timestamp with current timestamp
     const sectionObject = {};
     const currentTime = new Date();
-    sectionObject[database.lastUpdatedTimestamp] = currentTime.getTime();
-    sectionObject[database.inProgress] = false;
-    await database.setUserData(database.systemInfo, sectionName, sectionObject);
+    sectionObject[dbconstants.lastUpdatedTimestamp] = currentTime.getTime();
+    sectionObject[dbconstants.inProgress] = false;
+    await database.setUserData(dbconstants.systemInfo, sectionName, sectionObject);
   } catch (error) {
     console.log(`updateSystemInfoSection: caught exception: ${error}`);
   }

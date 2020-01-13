@@ -2,11 +2,24 @@
 // to initiate an invocation of the data load pipeline
 
 const { PubSub } = require('@google-cloud/pubsub');
-const pubsub = new PubSub();
 
+// get the environment as an env variable
 const env = process.env.NODE_ENV || 'prod';
 console.log('environment:', env);
 
+// set the environment in the environment service
+const environment = require('../src/services/environment');
+environment.setEnv(env);
+
+const cloudConfigFile = environment.getCloudPlatformConfigFile();
+const projectId = environment.getProjectId();
+
+const pubsub = new PubSub({
+  projectId: projectId,
+  keyFilename: cloudConfigFile,
+});
+
+// get action as an env variable
 const action = process.env.ACTION || 'load';
 console.log('action:', action)
 

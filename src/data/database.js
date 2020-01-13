@@ -16,6 +16,9 @@
 //   tokenExpired: check whether access token expired
 //   connections: return user connections
 
+// import constants
+const dbconstants = require('./database-constants')
+
 // import providers
 const firestore = require('./database-firestore')
 const memory = require('./database-memory')
@@ -26,18 +29,8 @@ const providers = {
   memory: memory
 }
 
-// define some constants - system info "userId" and invoke info "document name"
-exports.systemInfo = '__system_info';
-exports.invokeInfo = '__invoke_info';
-exports.history = '__history';
-exports.metadata = 'metadata';
-exports.dataPipelineSection = 'dataPipeline';
-exports.loadSection = 'load';
-exports.snapshotSection = 'snapshot';
-exports.lastUpdatedTimestamp = 'lastUpdatedTimestamp';
-exports.inProgress = 'inProgress';
-exports.refreshHistory = 'refreshHistory';
-exports.profile = 'profile';
+// define name of metadata "collection"
+exports.metadata = '__metadata';
 
 // set the provider
 var provider = providers['firestore']
@@ -54,7 +47,7 @@ exports.setEnv = (env = 'prod') => {
 
   // for non-production environments, append env to metadata collection name
   if (env !== 'prod') {
-    exports.metadata = `metadata-${env}`;
+    exports.metadata = `__metadata-${env}`;
   }
 }
 
@@ -90,7 +83,7 @@ exports.getAllUsers = async () => {
   const users = await provider.getAllUsers();
 
   // filter out the system info synthetic user
-  return users.filter(u => u !== exports.systemInfo);
+  return users.filter(u => u !== dbconstants.systemInfo);
 }
 
 // get user collections
