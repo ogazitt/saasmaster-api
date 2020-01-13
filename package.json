@@ -19,8 +19,10 @@
     "build:prod": "cp Dockerfile-prod Dockerfile; PROJ=saasmaster-prod SVC=saasmaster scripts/build.sh; cp Dockerfile-dev Dockerfile",
     "deploy:dev": "PROJ=saasmaster SVC=saasmaster-api scripts/deploy.sh",
     "deploy:prod": "PROJ=saasmaster-prod SVC=saasmaster scripts/deploy.sh",
-    "push:dev": "npm run build-spa:dev && npm run copy && npm run build:dev && npm run deploy:dev",
-    "push:prod": "npm run build-spa:prod && npm run copy && npm run build:prod && npm run deploy:prod",
+    "activate:dev": "CONFIGURATION=saasmaster-dev scripts/activate.sh",
+    "activate:prod": "CONFIGURATION=saasmaster-prod scripts/activate.sh",
+    "push:dev": "npm run activate:dev && npm run build-spa:dev && npm run copy && npm run build:dev && npm run deploy:dev",
+    "push:prod": "npm run activate:prod && npm run build-spa:prod && npm run copy && npm run build:prod && npm run deploy:prod",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Omri Gazitt",
