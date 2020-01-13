@@ -9,7 +9,7 @@
   },
   "scripts": {
     "start": "ENV=dev node server.js",
-    "start:dev": "ENV=dev HOSTED=false node server.js",
+    "start:dev": "ENV=dev node server.js",
     "start:devhosted": "ENV=devhosted node server.js",
     "start:prod": "ENV=prod node server.js",
     "build-spa:dev": "cd ../saasmaster && npm run build:dev",

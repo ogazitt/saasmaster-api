@@ -10,7 +10,7 @@
       "request": "launch",
       "name": "Launch Program",
       "program": "${workspaceFolder}/server.js",
-      "env": {"NODE_ENV":"dev"}
+      "env": {"ENV":"dev"}
     }
   ]
 }
