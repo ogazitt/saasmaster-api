@@ -15,7 +15,6 @@
 //   removeConnection: remove connection for user in provider
 //   removeDocument: remove a document from a collection
 //   tokenExpired: check whether access token expired
-//   connections: return user connections
 
 // import constants
 const dbconstants = require('./database-constants')
@@ -122,49 +121,4 @@ exports.removeDocument = async (
 
 exports.tokenExpired = (user) => {
   return provider.tokenExpired(user);
-}
-
-exports.connections = async (userId) => {
-  const connectionList = {
-    'google-oauth2': {
-      image: '/google-logo.png'
-    },
-    facebook: {
-      image: '/facebook-logo.png'
-    },
-    instagram: {
-      image: '/instagram-logo.png'
-    },
-    twitter: {
-      image: '/twitter-logo.png'
-    }
-  };
-
-  try {
-    const user = await exports.getUserData(userId) || {};
-    const [provider] = userId.split('|');
-    const connections = Object.keys(connectionList).map((key) => {
-      // connected can be 'base' for base connection, 'linked' for linked connection, or null
-      var connected = user[key] ? 'linked' : null;
-
-      // if the connection is the same as the provider of the base userId, note it that way
-      if (key === provider) {
-        connected = 'base';
-      }
-
-      const uid = user[key] && user[key].userId;
-
-      return ({ 
-        provider: key, 
-        connected: connected,
-        image: connectionList[key].image,
-        userId: uid
-      })
-    });
-
-    return connections;
-  } catch (error) {
-    console.log(`connections: caught exception: ${error}`);
-    return {}
-  }
 }

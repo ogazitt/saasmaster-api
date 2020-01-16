@@ -30,6 +30,7 @@ const dbconstants = require('./src/data/database-constants');
 const dal = require('./src/data/dal');
 const datapipeline = require('./src/modules/datapipeline');
 const profile = require('./src/modules/profile');
+const connections = require('./src/modules/connections');
 
 // import google provider for checking JWT
 const google = require('./src/services/googleauth');
@@ -358,7 +359,7 @@ app.delete('/yelp/:businessId', checkJwt, processUser, function (req, res){
 //app.get('/connections', checkJwt, jwtAuthz(['read:timesheets']), function(req, res){
 app.get('/connections', checkJwt, processUser, function(req, res){
   const returnConnections = async () => {
-    const conns = await database.connections(req.userId) || {};
+    const conns = await connections.getConnections(req.userId) || {};
     res.status(200).send(conns);
   }
   returnConnections();
