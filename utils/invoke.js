@@ -8,7 +8,7 @@ const env = process.env.ENV || 'prod';
 console.log('environment:', env);
 
 // set the environment in the environment service
-const environment = require('../src/services/environment');
+const environment = require('../src/modules/environment');
 environment.setEnv(env);
 
 const cloudConfigFile = environment.getCloudPlatformConfigFile();

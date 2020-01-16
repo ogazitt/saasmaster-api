@@ -3,7 +3,7 @@
 //   createPubSubJob: creates a pub-sub cron job 
 
 const scheduler = require('@google-cloud/scheduler');
-const environment = require('./environment');
+const environment = require('../modules/environment');
 const cloudConfigFile = environment.getCloudPlatformConfigFile();
 const projectId = environment.getProjectId();
 

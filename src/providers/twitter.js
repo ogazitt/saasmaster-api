@@ -7,7 +7,7 @@
 const axios = require('axios');
 const oauthSignature = require('oauth-signature');
 const twitterauth = require('../services/twitterauth.js');
-const environment = require('../services/environment');
+const environment = require('../modules/environment');
 const twitterConfig = environment.getConfig(environment.twitter);
 
 // api's defined by this provider

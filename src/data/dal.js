@@ -10,7 +10,7 @@
 
 const database = require('./database');
 const dbconstants = require('./database-constants');
-const datapipeline = require('./datapipeline');
+const datapipeline = require('../modules/datapipeline');
 const sentiment = require('../services/sentiment');
 
 // retrieve an entity and its metadata - from cache or from the provider

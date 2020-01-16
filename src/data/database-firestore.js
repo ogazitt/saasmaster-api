@@ -2,7 +2,7 @@
 
 const Firestore = require('@google-cloud/firestore');
 const dbconstants = require('./database-constants');
-const environment = require('../services/environment');
+const environment = require('../modules/environment');
 const cloudConfigFile = environment.getCloudPlatformConfigFile();
 const projectId = environment.getProjectId();
 

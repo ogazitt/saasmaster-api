@@ -8,7 +8,7 @@
 //        removeBusiness([userId, businessId]): remove this business ID from the list of businesses
 
 const axios = require('axios');
-const environment = require('../services/environment');
+const environment = require('../modules/environment');
 const yelpConfig = environment.getConfig(environment.yelp);
 const database = require('../data/database.js');
 

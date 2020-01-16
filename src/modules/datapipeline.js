@@ -5,14 +5,14 @@
 //   messageHandler: event handler for dispatching messages coming in through the pubsub system
 //   refreshHistory: invoke snapshot pipeline for a specific user
 
-const database = require('./database');
-const dbconstants = require('./database-constants');
+const database = require('../data/database');
+const dbconstants = require('../data/database-constants');
 const providers = require('../providers/providers');
 const dataProviders = providers.providers;
-const dal = require('./dal');
+const dal = require('../data/dal');
 const pubsub = require('../services/pubsub');
 const scheduler = require('../services/scheduler');
-const environment = require('../services/environment');
+const environment = require('./environment');
 
 // base name for pubsub machinery
 const invoke = 'invoke';

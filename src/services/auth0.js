@@ -8,7 +8,7 @@
 
 const axios = require('axios');
 const database = require('../data/database');
-const environment = require('./environment');
+const environment = require('../modules/environment');
 const auth0Config = environment.getConfig(environment.auth0);
 
 // get a user's Auth0 profile from the management API

@@ -4,7 +4,7 @@
 //   createSubscription: creates a sub on a topic, using the event handlers passed in
 
 const { PubSub } = require('@google-cloud/pubsub');
-const environment = require('./environment');
+const environment = require('../modules/environment');
 const cloudConfigFile = environment.getCloudPlatformConfigFile();
 const projectId = environment.getProjectId();
 

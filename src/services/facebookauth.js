@@ -5,7 +5,7 @@
 
 const database = require('../data/database');
 const auth0 = require('../services/auth0');
-const environment = require('./environment');
+const environment = require('../modules/environment');
 const facebookConfig = environment.getConfig(environment.facebook);
 
 exports.getFacebookAccessInfo = async (userId) => {

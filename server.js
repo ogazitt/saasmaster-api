@@ -15,7 +15,7 @@ const account = env === 'devhosted' ? 'dev' : env;
 console.log('account:', account);
 
 // set the environment in the environment service
-const environment = require('./src/services/environment');
+const environment = require('./src/modules/environment');
 environment.setEnv(account);
 
 // import the auth config based on the environment
@@ -28,7 +28,7 @@ const dataProviders = providers.providers;
 const database = require('./src/data/database');
 const dbconstants = require('./src/data/database-constants');
 const dal = require('./src/data/dal');
-const datapipeline = require('./src/data/datapipeline');
+const datapipeline = require('./src/modules/datapipeline');
 
 // import google provider for checking JWT
 const google = require('./src/services/googleauth');

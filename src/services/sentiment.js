@@ -7,7 +7,7 @@
 //     rating is one of [positive,neutral,negative]
 
 const language = require('@google-cloud/language');
-const environment = require('./environment');
+const environment = require('../modules/environment');
 const cloudConfigFile = environment.getCloudPlatformConfigFile();
 const projectId = environment.getProjectId();
 
