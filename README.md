@@ -30,6 +30,11 @@ every hour on the hour.
 
 The express webserver will default to listening on port 8080.  Override with PORT=xxxx variable.
 
+### `npm run start:devhosted`
+
+Runs the backend with dev account credentials but with the `prod` configuration, which runs 
+a production-like hosted environment in the dev account. 
+
 ### `npm run build-spa` and `npm run copy`
 
 These will build the production (minified) version of the [SaaSMaster](https://github.com/ogazitt/saasmaster) front-end, 
@@ -40,9 +45,9 @@ the saasmaster-api project.
 
 These will build the Docker container for the API (including the SPA) using Google Cloud Build, and deploy it to Google Cloud Run.  
 
-### `npm run push` 
+### `npm run push:dev | push:prod`
 
-This combines the `build-spa`, `copy`, `build`, and `deploy` operations to automate the deployment of the current source code with one command.
+This combines the `build-spa`, `copy`, `build`, and `deploy` operations to automate the deployment of the current source code with one command into the respective environment.
 
 ## Directory structure
 
@@ -52,7 +57,7 @@ The app is bootstrapped out of `server.js`, which pulls in all other source depe
 
 Contains all the config for the project.  These files aren't committed to source control since they contain secrets.
 The API expects an `auth0_config_{dev|prod}.json` file for application keys and secret keys for Auth0; 
-a `{google|facebook|twitter}_config.json` for client ID's and secret keys Google, Facebook, Twitter; and a 
+a `{google|facebook|twitter|yelp}_config_{dev|prod}.json` for client ID's and secret keys Google, Facebook, Twitter; and a 
 `cloud_platform_config_{dev|prod}.json` file for the Google Cloud Platform service account used with this application.
 
 ### `scripts`
@@ -62,6 +67,10 @@ Contains scripts to build and deploy the app to GCP, as well as to set up the IA
 ### `src/data`
 
 Contains the data access layer, database abstraction layer, and data pipeline
+
+### `src/modules`
+
+Contains various app modules such as the environment, data pipeline, profile, connections 
 
 ### `src/providers`
 

@@ -22,13 +22,14 @@ environment.setEnv(account);
 const auth0Config = environment.getConfig(environment.auth0);
 const auth0 = require('./src/services/auth0');
 
-// import providers, database, storage, datapipeline layers
+// import providers, database, storage, data access, datapipeline, profile layers
 const providers = require('./src/providers/providers');
 const dataProviders = providers.providers;
 const database = require('./src/data/database');
 const dbconstants = require('./src/data/database-constants');
 const dal = require('./src/data/dal');
 const datapipeline = require('./src/modules/datapipeline');
+const profile = require('./src/modules/profile');
 
 // import google provider for checking JWT
 const google = require('./src/services/googleauth');
@@ -385,17 +386,17 @@ app.get('/history', checkJwt, processUser, function(req, res){
 app.get('/profile', checkJwt, processUser, function(req, res){
   const returnProfile = async () => {
     // retrieve the profile data from the app and from auth0 
-    const appProfile = await dal.getProfile(req.userId) || {};
+    const appProfile = await profile.getProfile(req.userId) || {};
     const auth0profile = await auth0.getAuth0Profile(req.userId);
 
     // create a consolidated profile with app data overwriting auth0 data
-    const profile = {...auth0profile, ...appProfile};
+    const fullProfile = {...auth0profile, ...appProfile};
 
     // ensure the [identities] come fresh from auth0 
     if (auth0profile && auth0profile.identities) {
-      profile.identities = auth0profile.identities;
+      fullProfile.identities = auth0profile.identities;
     }
-    res.status(200).send(profile);
+    res.status(200).send(fullProfile);
   }
   returnProfile();
 });
@@ -403,7 +404,7 @@ app.get('/profile', checkJwt, processUser, function(req, res){
 // Post profile API endpoint
 app.post('/profile', checkJwt, processUser, function(req, res){
   const storeProfile = async () => {
-    await dal.storeProfile(req.userId, req.body);
+    await profile.storeProfile(req.userId, req.body);
     res.status(200).send({ message: 'success' });
   }
   storeProfile();
