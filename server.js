@@ -124,6 +124,40 @@ const getData = async (
   }
 };
 
+// async function to invoke the provider and return the result 
+//   
+//   res: response object
+//   userId: userId for this request
+//   provider: data provider to call
+//   entity: entity to retrieve
+//   params: extra parameters to pass into the data provider function
+const invokeProvider = async (
+  res,          // response object
+  userId,       // userId for this request
+  provider,     // provider object
+  entity,       // entity to retrieve (null for default)
+  params       // array of parameters to pass to the function
+  ) => {
+  try {
+    // invoke the provider and retrieve the data from the data access layer
+    const data = await dal.invokeProvider(userId, provider, entity, params);
+    if (!data) {
+      console.log('invokeProvider: no data returned');
+      res.status(200).send({ message: 'no data returned'});
+      return;
+    }
+
+    // SUCCESS! send the data back to the client
+    res.status(200).send(data);
+    return;
+  } catch (error) {
+    await error.response;
+    console.log(`invokeProvider: caught exception: ${error}`);
+    res.status(200).send({ message: error });
+    return;
+  }
+};
+
 // store metadata associated with a set of data objects
 //   data is in the following format:
 //     [
@@ -253,6 +287,70 @@ app.post('/twitter/mentions/:tweetId', checkJwt, processUser, function (req, res
     req.userId,
     dataProviders.twitter.getTweets,
     metadataArray); 
+});
+
+// Get yelp api data endpoint - returns list of businesses
+app.get('/yelp', checkJwt, processUser, function(req, res){
+  invokeProvider(
+    res, 
+    req.userId, 
+    dataProviders.yelp.getBusinesses, 
+    null,     // use the default entity name
+    [req.userId]); // parameter array
+});
+
+// Get yelp api data endpoint
+app.get('/yelp/reviews/:businessId', checkJwt, processUser, function(req, res){
+  const businessId = req.params.businessId;
+  const refresh = req.query.refresh || false;
+  getData(
+    res, 
+    req.userId, 
+    dataProviders.yelp.getReviews, 
+    `yelp:${businessId}`,  // entity name must be constructed dynamically
+    [businessId], // parameter array
+    refresh);
+});
+
+// Post yelp reviews API - takes a business id as a parameter,
+// and multiple review ids in the body, and associates metadata with them
+// Data payload format:
+//     [
+//       { id: key1, meta1: value1, meta2: value2, ... },
+//       { id: key2, meta1: value1, meta2: value2, ... },
+//     ]
+app.post('/yelp/reviews/:businessId', checkJwt, processUser, function (req, res){
+  const businessId = req.params.businessId;
+  storeMetadata(
+    res,
+    req.userId,
+    dataProviders.facebook.getReviews,
+    `yelp:${businessId}`,
+    req.body);
+});
+
+// Post yelp business API - takes a phone number as a parameter,
+// invokes the yelp search API to find the business, and adds it if available
+app.post('/yelp/:phone', checkJwt, processUser, function (req, res){
+  const phone = req.params.phone;
+  invokeProvider(
+    res, 
+    req.userId, 
+    dataProviders.yelp.addBusiness, 
+    null,     // use the default entity name
+    [phone]); // parameter array
+});
+
+// Delete yelp business API - takes a business Id as a parameter,
+// and removes it from the stored list in the yelp:businesses collection
+app.delete('/yelp/:businessId', checkJwt, processUser, function (req, res){
+  const businessId = req.params.businessId;
+  invokeProvider(
+    res, 
+    req.userId, 
+    dataProviders.yelp.removeBusiness, 
+    null,     // use the default entity name
+    [req.userId, businessId]); // parameter array
 });
 
 // Get connections API endpoint

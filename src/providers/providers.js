@@ -7,9 +7,11 @@
 const google = require('./google');
 const facebook = require('./facebook');
 const twitter = require('./twitter');
+const yelp = require('./yelp');
 
 exports.providers = {
   'google-oauth2': google.apis,
   'facebook': facebook.apis,
-  'twitter': twitter.apis
+  'twitter': twitter.apis,
+  'yelp': yelp.apis
 }

@@ -16,6 +16,7 @@ exports.auth0 = 'auth0';
 exports.google = 'google';
 exports.facebook = 'facebook';
 exports.twitter = 'twitter';
+exports.yelp = 'yelp';
 
 const configs = {
   auth0: {
@@ -33,6 +34,10 @@ const configs = {
   twitter: {
     dev: require(`../../config/twitter_auth_config_dev.json`),
     prod: require(`../../config/twitter_auth_config_prod.json`)
+  },
+  yelp: {
+    dev: require(`../../config/yelp_auth_config_dev.json`),
+    prod: require(`../../config/yelp_auth_config_prod.json`)
   }
 };
 

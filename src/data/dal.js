@@ -5,6 +5,8 @@
 //   getHistory: retrieve metadata snapshot history for a userId
 //   getMetadata: retrieve all metadata for a userId
 //   storeMetadata: store metadata for a particular entity
+//   getProfile: retrieve profile information for a userId
+//   storeProfile: store profile information for a userId
 
 const database = require('./database');
 const dbconstants = require('./database-constants');
@@ -106,6 +108,40 @@ exports.getMetadata = async (userId) => {
     return metadata;
   } catch (error) {
     console.log(`getMetadata: caught exception: ${error}`);
+    return null;
+  }
+}
+
+exports.invokeProvider = async (userId, provider, entity, params) => {
+  try {
+    const providerName = provider && provider.provider;
+    const entityName = entity || provider.entity;
+    // basic error checking
+    if (!providerName || !entityName) {
+      console.log(`getData: failed to validate provider ${providerName} / entity ${entityName}`);
+      return null;
+    }
+
+    // retrieve data from provider
+    let data = await callProvider(provider, params);
+    if (!data) {
+      return null;
+    }
+
+    // if some data was returned, shred the data returned into a batch of documents in the collection
+    if (data.length) {
+      await database.storeBatch(userId, entity, data, provider.itemKey);
+    }
+
+    // re-retrieve the entity's collection from cache and return it
+    data = await database.query(userId, entityName);
+    if (!data) {
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    console.log(`invokeProvider: caught exception: ${error}`);
     return null;
   }
 }

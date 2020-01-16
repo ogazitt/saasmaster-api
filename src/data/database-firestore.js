@@ -223,6 +223,23 @@ exports.removeConnection = async (
   }
 }
 
+// remove a document from a collection
+exports.removeDocument = async (
+  userId,            // userid to store data for
+  collection,        // collection to change
+  document) => {     // document to remove
+  try {
+    // address the document in the collection
+    const doc = users.doc(userId).collection(collection).doc(document);
+
+    // remove the document
+    await doc.delete();
+  } catch (error) {
+    console.log(`removeDocument: caught exception: ${error}`);
+    return null;
+  }
+}
+
 // calculate whether an token has expired based on this provider
 exports.tokenExpired = (user) => {
   try {

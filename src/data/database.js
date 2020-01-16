@@ -13,6 +13,7 @@
 //   getUserData: get user info from provider
 //   setUserData: set user info in provider
 //   removeConnection: remove connection for user in provider
+//   removeDocument: remove a document from a collection
 //   tokenExpired: check whether access token expired
 //   connections: return user connections
 
@@ -109,6 +110,14 @@ exports.removeConnection = async (
   userId,                // userid to store data for
   connection) => {       // which connection to remove
   return await provider.removeConnection(userId, connection)
+}
+
+// remove a document from a particular entity collection
+exports.removeDocument = async (
+  userId,                // userid to store data for
+  collection,            // which collection to change
+  id) => {               // which document to remove
+  return await provider.removeDocument(userId, collection, id)
 }
 
 exports.tokenExpired = (user) => {
