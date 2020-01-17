@@ -13,26 +13,26 @@ exports.addConnection = async (userId, connection) => {
 
 exports.getConnections = async (userId) => {
   const connectionList = {
-    'google-oauth2': {
+    twitter: {
       type: 'link',
-      image: '/google-logo.png'
+      image: '/twitter-logo.png'
     },
     facebook: {
       type: 'link',
       image: '/facebook-logo.png'
     },
+    yelp: {
+      type: 'simple',
+      image: '/yelp-logo.png'
+    },
     instagram: {
       type: 'link',
       image: '/instagram-logo.png'
     },
-    twitter: {
+    'google-oauth2': {
       type: 'link',
-      image: '/twitter-logo.png'
+      image: '/google-logo.png'
     },
-    yelp: {
-      type: 'simple',
-      image: '/yelp-logo.png'
-    }
   };
 
   try {
