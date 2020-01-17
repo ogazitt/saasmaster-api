@@ -128,7 +128,7 @@ exports.invokeProvider = async (userId, provider, entity, params) => {
 
     // if some data was returned, shred the data returned into a batch of documents in the collection
     if (data.length) {
-      await database.storeBatch(userId, entity, data, provider.itemKey);
+      await database.storeBatch(userId, entityName, data, provider.itemKey);
     }
 
     // re-retrieve the entity's collection from cache and return it

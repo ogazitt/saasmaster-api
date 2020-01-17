@@ -53,6 +53,7 @@ exports.getConnections = async (userId) => {
         provider: key, 
         connected: connected,
         image: connectionList[key].image,
+        type: connectionList[key].type,
         userId: uid
       })
     });

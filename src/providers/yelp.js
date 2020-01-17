@@ -58,8 +58,13 @@ exports.apis.addBusiness.func = async ([phone]) => {
         headers: headers
       });
     
-    // response received successfully
-    return response.data;
+    // if the API found a business with this phone number return it
+    if (response.data && response.data.businesses && response.data.businesses.length) {
+      return response.data;
+    }
+    
+    // return null if the business was not found
+    return null;
   } catch (error) {
     await error.response;
     console.log(`addBusiness: caught exception: ${error}`);

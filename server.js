@@ -326,33 +326,44 @@ app.post('/yelp/reviews/:businessId', checkJwt, processUser, function (req, res)
   storeMetadata(
     res,
     req.userId,
-    dataProviders.facebook.getReviews,
+    dataProviders.yelp.getReviews,
     `yelp:${businessId}`,
     req.body);
 });
 
-// Post yelp business API - takes a phone number as a parameter,
-// invokes the yelp search API to find the business, and adds it if available
-app.post('/yelp/:phone', checkJwt, processUser, function (req, res){
-  const phone = req.params.phone;
-  invokeProvider(
-    res, 
-    req.userId, 
-    dataProviders.yelp.addBusiness, 
-    null,     // use the default entity name
-    [phone]); // parameter array
-});
+// Post yelp business API - adds or removes a business
+app.post('/yelp', checkJwt, processUser, function (req, res){
+  const action = req.body && req.body.action;
 
-// Delete yelp business API - takes a business Id as a parameter,
-// and removes it from the stored list in the yelp:businesses collection
-app.delete('/yelp/:businessId', checkJwt, processUser, function (req, res){
-  const businessId = req.params.businessId;
-  invokeProvider(
-    res, 
-    req.userId, 
-    dataProviders.yelp.removeBusiness, 
-    null,     // use the default entity name
-    [req.userId, businessId]); // parameter array
+  const add = async () => {
+    invokeProvider(
+      res, 
+      req.userId, 
+      dataProviders.yelp.addBusiness, 
+      null,     // use the default entity name
+      [req.body.phone]); // parameter array
+  }
+
+  const remove = async () => {
+    invokeProvider(
+      res, 
+      req.userId, 
+      dataProviders.yelp.removeBusiness, 
+      null,     // use the default entity name
+      [req.userId, req.body.businessId]); // parameter array
+  }
+
+  if (action === 'add' && req.body && req.body.phone) {
+    add();
+    return;
+  }
+
+  if (action === 'remove' && req.body && req.body.businessId) {
+    remove();
+    return;
+  }
+
+  res.status(200).send({ message: 'Unknown action'}); 
 });
 
 // Get connections API endpoint
@@ -363,6 +374,34 @@ app.get('/connections', checkJwt, processUser, function(req, res){
     res.status(200).send(conns);
   }
   returnConnections();
+});
+
+// Post connections API endpoint adds or removes a simple connection
+app.post('/connections', checkJwt, processUser, function(req, res){
+  const action = req.body && req.body.action;
+  const provider = req.body && req.body.provider;
+
+  const add = async () => {
+    await connections.addConnection(req.userId, provider);
+    res.status(200).send({ message: 'success'});
+  }
+
+  const remove = async () => {
+    await connections.removeConnection(req.userId, provider);
+    res.status(200).send({ message: 'success'});
+  }
+
+  if (action === 'add' && provider) {
+    add();
+    return;
+  }
+
+  if (action === 'remove' && provider) {
+    remove();
+    return;
+  }
+
+  res.status(200).send({ message: 'Unknown action'});  
 });
 
 // Get metadata API endpoint
@@ -419,7 +458,6 @@ app.post('/profile', checkJwt, processUser, function(req, res){
 //    secondaryUserId <in the format 'provider|userid'>
 //  }
 app.post('/link', checkJwt, function(req, res){
-
   const userId = req.body && req.body.primaryUserId || req.user['sub'];
   const action = req.body && req.body.action;
   const secondaryUserId = req.body && req.body.secondaryUserId;
