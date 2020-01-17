@@ -34,6 +34,7 @@ exports.apis = {
     arrayKey: 'reviews',
     itemKey: 'id',
     ratingField: 'rating',
+    sentimentTextField: 'text',
     textField: 'text'
   },
   removeBusiness: {

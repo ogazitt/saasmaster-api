@@ -242,12 +242,13 @@ const queryMetadata = async (userId, entity) => {
 // retrieve the sentiment score associated with the data
 const retrieveSentimentMetadata = async (userId, provider, data, metadata) => {
   try {
-    // determine whether there is a sentiment field or sentiment text field
+    // determine whether there is a sentiment field, sentiment text field, or a rating field
     const textField = provider.textField;
     const sentimentTextField = provider.sentimentTextField;
     const sentimentField = provider.sentimentField;
+    const ratingField = provider.ratingField;
     const itemKeyField = provider.itemKey;
-    if (!sentimentTextField && !sentimentField) {
+    if (!sentimentTextField && !sentimentField && !ratingField) {
       return null;
     }
 
@@ -262,7 +263,6 @@ const retrieveSentimentMetadata = async (userId, provider, data, metadata) => {
       // use the key to retrieve the sentiment score, if one is stored
       const id = element[itemKeyField];
       const text = element[textField];
-      const sentimentText = element[sentimentTextField];
 
       // get current metadata element, or initialze with a default if it doesn't exist
       const metadataArray = metadata.filter(m => m[dbconstants.metadataIdField] === id);
@@ -282,9 +282,13 @@ const retrieveSentimentMetadata = async (userId, provider, data, metadata) => {
           rating = element[sentimentField];
           // synthesize a score based on the rating text
           score = rating === 'positive' ? 0.4 : rating === 'negative' ? -0.4 : 0;
+        } else if (ratingField) {
+          rating = element[ratingField] > 3 ? 'positive' : element[ratingField] < 3 ? 'negative' : 'neutral';
+          // assume a rating in the range of 1:5, and normalize to { -0.5, -0.25, 0, 0.25, 0.5 }
+          score = element[ratingField] / 4.0 - 0.75;
         } else {
           // call the sentiment analysis API
-          const result = await sentiment.analyze(sentimentText);
+          const result = await sentiment.analyze(element[sentimentTextField]);
           if (result) {
             [score, rating] = result;
             console.log(`retrieved sentiment score ${score}, rating ${rating} for item ${id}`);
