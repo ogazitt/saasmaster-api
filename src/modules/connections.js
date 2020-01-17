@@ -25,13 +25,13 @@ exports.getConnections = async (userId) => {
       type: 'simple',
       image: '/yelp-logo.png'
     },
-    instagram: {
-      type: 'link',
-      image: '/instagram-logo.png'
-    },
     'google-oauth2': {
       type: 'link',
       image: '/google-logo.png'
+    },
+    instagram: {
+      type: 'link',
+      image: '/instagram-logo.png'
     },
   };
 
