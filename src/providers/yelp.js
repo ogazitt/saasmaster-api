@@ -47,7 +47,8 @@ exports.apis = {
 
 exports.apis.addBusiness.func = async ([phone]) => {
   try {
-    const url = `https://api.yelp.com/v3/businesses/search/phone?phone=${phone}`;
+    const normalizedPhoneNumber = normalize(phone);
+    const url = `https://api.yelp.com/v3/businesses/search/phone?phone=${normalizedPhoneNumber}`;
     const headers = { 
       'content-type': 'application/json',
       'authorization': `Bearer ${yelpConfig.api_key}`
@@ -114,3 +115,15 @@ exports.apis.removeBusiness.func = async ([userId, businessId]) => {
     return null;
   }
 };
+
+const normalize = (phone) => {
+  // remove any punctuation (hyphens, dots, parens)
+  phone = phone.replace(/[- .()]/g, "");
+
+  // if this is an american business phone number of length 10, add a "+1" in front of it
+  if (phone.length === 10) {
+    phone = `+1${phone}`;
+  }
+
+  return phone;
+}
