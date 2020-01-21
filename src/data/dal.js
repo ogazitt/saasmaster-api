@@ -4,6 +4,7 @@
 //   getData: retrieve an entity and its metadata - from cache or from the provider
 //   getHistory: retrieve metadata snapshot history for a userId
 //   getMetadata: retrieve all metadata for a userId
+//   invokeProvider: invoke a provider method directly
 //   storeMetadata: store metadata for a particular entity
 
 const database = require('./database');
@@ -56,7 +57,7 @@ exports.getData = async (userId, provider, entity, params, forceRefresh = false)
       storeData(userId, provider, entityName, params, data, invokeInfo);
 
       // perform sentiment analysis for new data records, merging with existing metadata
-      const sentimentMetadata = await retrieveSentimentMetadata(userId, provider, data, metadata);
+      const sentimentMetadata = await retrieveSentimentMetadata(userId, provider, entityName, data, metadata);
       if (sentimentMetadata && sentimentMetadata.length > 0) {
 
         // store the metadata if it was indeed refreshed, do NOT await the operation
@@ -100,10 +101,13 @@ exports.getHistory = async (userId, range) => {
 }
 
 // retrieve all metadata for all data entities 
-exports.getMetadata = async (userId) => {
+exports.getMetadata = async (userId, newFlag) => {
   try {
-    const metadata = await database.queryGroup(userId, database.metadata);
-    return metadata;
+    if (newFlag) {
+      return await database.queryGroup(userId, database.metadata, dbconstants.metadataNewFlag, true);
+    } else {
+    return await database.queryGroup(userId, database.metadata);
+    }
   } catch (error) {
     console.log(`getMetadata: caught exception: ${error}`);
     return null;
@@ -131,7 +135,7 @@ exports.invokeProvider = async (userId, provider, entity, params) => {
       await database.storeBatch(userId, entityName, data, provider.itemKey);
     }
 
-    // re-retrieve the entity's collection from cache and return it
+    // re-retrieve the entity's collection from cache and return it (there may be more than what just got returned)
     data = await database.query(userId, entityName);
     if (!data) {
       return null;
@@ -240,7 +244,7 @@ const queryMetadata = async (userId, entity) => {
 }
 
 // retrieve the sentiment score associated with the data
-const retrieveSentimentMetadata = async (userId, provider, data, metadata) => {
+const retrieveSentimentMetadata = async (userId, provider, entityName, data, metadata) => {
   try {
     // determine whether there is a sentiment field, sentiment text field, or a rating field
     const textField = provider.textField;
@@ -298,11 +302,13 @@ const retrieveSentimentMetadata = async (userId, provider, data, metadata) => {
         // define the new metadata element
         const newMetadataElement = {};
         newMetadataElement[dbconstants.metadataIdField] = id;
+        newMetadataElement[dbconstants.metadataEntityField] = entityName;
         newMetadataElement[dbconstants.metadataUserIdField] = userId;
         newMetadataElement[dbconstants.metadataProviderField] = provider.provider;
         newMetadataElement[dbconstants.metadataSentimentField] = rating;
         newMetadataElement[dbconstants.metadataSentimentScoreField] = score;
         newMetadataElement[dbconstants.metadataTextField] = text;
+        newMetadataElement[dbconstants.metadataNewFlag] = true;
         
         // create a combined metadata entry
         const metadataEntry = { 
@@ -385,6 +391,7 @@ const updateMetadata = async (userId, entity, provider, metadata) => {
       // define the core metadata element
       const coreEntry = {};
       coreEntry[dbconstants.metadataIdField] = key;
+      coreEntry[dbconstants.metadataEntityField] = entity;
       coreEntry[dbconstants.metadataUserIdField] = userId;
       coreEntry[dbconstants.metadataProviderField] = provider.provider;
       

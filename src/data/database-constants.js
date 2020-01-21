@@ -7,11 +7,13 @@ exports.history = '__history';
 
 // metadata field names which get spliced in with data
 exports.metadataIdField = '__id';
+exports.metadataEntityField = '__entity';
 exports.metadataUserIdField = '__userId';
 exports.metadataProviderField = '__provider';
 exports.metadataSentimentField = '__sentiment';
 exports.metadataSentimentScoreField = '__sentimentScore';
 exports.metadataTextField = '__text';
+exports.metadataNewFlag = '__new';
 
 // various section names for __system_info and profile
 exports.dataPipelineSection = 'dataPipeline';

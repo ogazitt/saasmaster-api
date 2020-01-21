@@ -9,12 +9,14 @@
 //   geteEndpoint(): gets the Google Cloud Run endpoint for the current env (dev | prod)
 //   getServiceAccount(): gets the GCP pub-sub service account for the current env (dev | prod)
 //   getServiceAccount(): gets the GCP service location for the current env (dev | prod)
+//   getUrl(): gets the URL for the app running in the current env (dev | prod)
 
 var environment;
 
 exports.auth0 = 'auth0';
-exports.google = 'google';
 exports.facebook = 'facebook';
+exports.google = 'google';
+exports.sendgrid = 'sendgrid';
 exports.twitter = 'twitter';
 exports.yelp = 'yelp';
 
@@ -23,13 +25,17 @@ const configs = {
     dev: require(`../../config/auth0_config_dev.json`),
     prod: require(`../../config/auth0_config_prod.json`)
   },
+  facebook: {
+    dev: require(`../../config/facebook_auth_config_dev.json`),
+    prod: require(`../../config/facebook_auth_config_prod.json`)
+  },
   google: {
     dev: require(`../../config/google_auth_config_dev.json`),
     prod: require(`../../config/google_auth_config_prod.json`)
   },
-  facebook: {
-    dev: require(`../../config/facebook_auth_config_dev.json`),
-    prod: require(`../../config/facebook_auth_config_prod.json`)
+  sendgrid: {
+    dev: require(`../../config/sendgrid_auth_config_dev.json`),
+    prod: require(`../../config/sendgrid_auth_config_prod.json`)
   },
   twitter: {
     dev: require(`../../config/twitter_auth_config_dev.json`),
@@ -80,5 +86,11 @@ exports.getServiceAccount = () => {
 exports.getLocation = () => {
   const location = environment === 'dev' ? 'us-central1' : 'us-west2';
   return location;
+}
+
+exports.getUrl = () => {
+  const endpoint = environment === 'dev' ? 'https://dev.saasmaster.co' 
+                                         : 'https://www.saasmaster.co';
+  return endpoint;
 }
 
