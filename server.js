@@ -108,7 +108,7 @@ const getData = async (
   ) => {
   try {
     // retrieve the data from the data access layer
-    const data = await dal.getData(userId, provider, entity, params, forceRefresh);
+    const data = await dal.getData(userId, provider, entity, params, forceRefresh, false);
     if (!data) {
       console.log('getData: no data returned');
       res.status(200).send({ message: 'no data returned'});
@@ -179,7 +179,7 @@ const storeMetadata = async (
 
     // return the refreshed data
     // BUGBUG: [userId] isn't right for FB pages, should be passed in!
-    const newData = await dal.getData(userId, provider, entity, [userId]);
+    const newData = await dal.getData(userId, provider, entity, [userId], false, false);
 
     // SUCCESS! send a success code back to client, with the new data
     res.status(200).send(newData);

@@ -13,6 +13,7 @@ const dal = require('../data/dal');
 const pubsub = require('../services/pubsub');
 const scheduler = require('../services/scheduler');
 const email = require('../services/email');
+const sms = require('../services/sms');
 const environment = require('./environment');
 const profile = require('./profile');
 
@@ -218,48 +219,53 @@ const loadPipeline = async () => {
 
             // utilize the data access layer's getData mechanism to re-retrieve object
             // force the refresh using the forceRefresh = true flag
-            await dal.getData(userId, provider, collection, params, true);
+            // flag new items using the newFlag = true flag
+            await dal.getData(userId, provider, collection, params, true, true);
           }
         }));
 
         // get the user's profile
         const userProfile = await profile.getProfile(userId);
 
-        // check if the user wants to be notified when new feedback arrives
-        if (userProfile && (userProfile[profile.notifyEmail] || userProfile[profile.notifySMS])) {
+        // retrieve any new metadata entries that were just created
+        const newMetadata = await dal.getMetadata(userId, true);
 
-          // retrieve any new metadata entries that were just created
-          const newMetadata = await dal.getMetadata(userId, true);
-          if (newMetadata && newMetadata.length > 0) {
-
-            // if the user requested email notifications, send them the requested feedback (negative or all)
-            if (userProfile[profile.notifyEmail]) {
-              let reviews = newMetadata;
-              if (userProfile[profile.notifyEmail] === profile.negativeReviews) {
-                reviews = newMetadata.filter(r => r[dbconstants.sentiment === 'negative']);
-              } 
-              await email.emailReviews(userProfile.email, reviews);
-            }
-
-            // TODO: if the user requested SMS notifications, send them the requested feedback (negative or all)
-
-            // remove the "new" flag from the metadata that was just handled
-            await Promise.all(newMetadata.map(async entry => {
-              const documentName = entry[dbconstants.metadataIdField];
-
-              // construct the metadata collection name from the entity name
-              const metadataCollection = `${entry[dbconstants.metadataEntityField]}/${dbconstants.invokeInfo}/${database.metadata}`;
-
-              // retrieve the metadata document
-              const metadataDocument = await database.getDocument(userId, metadataCollection, documentName);
-
-              // flip the "new" flag to false
-              delete metadataDocument[dbconstants.metadataNewFlag];
-
-              // save the document
-              await database.storeDocument(userId, metadataCollection, documentName, metadataDocument);
-            }));
+        // process any new metadata records
+        if (newMetadata && newMetadata.length > 0) {
+          // if the user requested email notifications, send them the requested feedback (negative or all)
+          if (userProfile[profile.notifyEmail] && userProfile[profile.notifyEmail] !== profile.noFeedback) {
+            let reviews = newMetadata;
+            if (userProfile[profile.notifyEmail] === profile.negativeFeedback) {
+              reviews = newMetadata.filter(r => r[dbconstants.metadataSentimentField] === 'negative');
+            } 
+            await email.emailReviews(userProfile.email, reviews);
           }
+
+          // if the user requested SMS notifications, send them the requested feedback (negative or all)
+          if (userProfile[profile.notifySms] && userProfile[profile.notifySms] !== profile.noFeedback) {
+            let reviews = newMetadata;
+            if (userProfile[profile.notifySms] === profile.negativeFeedback) {
+              reviews = newMetadata.filter(r => r[dbconstants.metadataSentimentField] === 'negative');
+            } 
+            await sms.textReviews(userProfile.phone, reviews);
+          }
+
+          // remove the "new" flag from the metadata that was just handled
+          await Promise.all(newMetadata.map(async entry => {
+            const documentName = entry[dbconstants.metadataIdField];
+
+            // construct the metadata collection name from the entity name
+            const metadataCollection = `${entry[dbconstants.metadataEntityField]}/${dbconstants.invokeInfo}/${database.metadata}`;
+
+            // retrieve the metadata document
+            const metadataDocument = await database.getDocument(userId, metadataCollection, documentName);
+
+            // flip the "new" flag to false
+            delete metadataDocument[dbconstants.metadataNewFlag];
+
+            // save the document
+            await database.storeDocument(userId, metadataCollection, documentName, metadataDocument);
+          }));
         }
       } catch (error) {
         console.log(`loadPipeline: user ${userId} caught exception: ${error}`);        

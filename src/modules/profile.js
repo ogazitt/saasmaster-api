@@ -8,9 +8,10 @@ const database = require('../data/database');
 const dbconstants = require('../data/database-constants');
 
 exports.notifyEmail = 'notifyEmail';
-exports.notifySMS = 'notifySMS';
-exports.negativeReviews = 'negativeReviews';
-exports.allReviews = 'all';
+exports.notifySms = 'notifySms';
+exports.negativeFeedback = 'negativeFeedback';
+exports.allFeedback = 'allFeedback';
+exports.noFeedback = 'none';
 
 // retrieve all metadata for all data entities 
 exports.getProfile = async (userId) => {

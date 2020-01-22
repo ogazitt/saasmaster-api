@@ -13,7 +13,7 @@ const datapipeline = require('../modules/datapipeline');
 const sentiment = require('../services/sentiment');
 
 // retrieve an entity and its metadata - from cache or from the provider
-exports.getData = async (userId, provider, entity, params, forceRefresh = false) => {
+exports.getData = async (userId, provider, entity, params, forceRefresh = false, newFlag = false) => {
   try {
     const providerName = provider && provider.provider;
     const entityName = entity || provider.entity;
@@ -57,7 +57,7 @@ exports.getData = async (userId, provider, entity, params, forceRefresh = false)
       storeData(userId, provider, entityName, params, data, invokeInfo);
 
       // perform sentiment analysis for new data records, merging with existing metadata
-      const sentimentMetadata = await retrieveSentimentMetadata(userId, provider, entityName, data, metadata);
+      const sentimentMetadata = await retrieveSentimentMetadata(userId, provider, entityName, data, metadata, newFlag);
       if (sentimentMetadata && sentimentMetadata.length > 0) {
 
         // store the metadata if it was indeed refreshed, do NOT await the operation
@@ -244,7 +244,7 @@ const queryMetadata = async (userId, entity) => {
 }
 
 // retrieve the sentiment score associated with the data
-const retrieveSentimentMetadata = async (userId, provider, entityName, data, metadata) => {
+const retrieveSentimentMetadata = async (userId, provider, entityName, data, metadata, newFlag) => {
   try {
     // determine whether there is a sentiment field, sentiment text field, or a rating field
     const textField = provider.textField;
@@ -308,7 +308,11 @@ const retrieveSentimentMetadata = async (userId, provider, entityName, data, met
         newMetadataElement[dbconstants.metadataSentimentField] = rating;
         newMetadataElement[dbconstants.metadataSentimentScoreField] = score;
         newMetadataElement[dbconstants.metadataTextField] = text;
-        newMetadataElement[dbconstants.metadataNewFlag] = true;
+
+        // if new items are to be flagged as such, set the new flag
+        if (newFlag) {
+          newMetadataElement[dbconstants.metadataNewFlag] = true;
+        }
         
         // create a combined metadata entry
         const metadataEntry = { 

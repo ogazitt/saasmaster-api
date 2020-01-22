@@ -17,6 +17,7 @@ exports.auth0 = 'auth0';
 exports.facebook = 'facebook';
 exports.google = 'google';
 exports.sendgrid = 'sendgrid';
+exports.twilio = 'twilio';
 exports.twitter = 'twitter';
 exports.yelp = 'yelp';
 
@@ -36,6 +37,10 @@ const configs = {
   sendgrid: {
     dev: require(`../../config/sendgrid_auth_config_dev.json`),
     prod: require(`../../config/sendgrid_auth_config_prod.json`)
+  },
+  twilio: {
+    dev: require(`../../config/twilio_auth_config_dev.json`),
+    prod: require(`../../config/twilio_auth_config_prod.json`)
   },
   twitter: {
     dev: require(`../../config/twitter_auth_config_dev.json`),
