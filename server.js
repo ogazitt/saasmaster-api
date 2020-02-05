@@ -513,6 +513,55 @@ app.post('/invoke', function(req, res){
   res.status(204).send();
 });
 
+// request access endpoint: this is an unauthenticated request that stores 
+// an email address that requests access to the beta
+app.post('/requestaccess', function(req, res){
+  console.log('POST /requestaccess');
+  const email = req.body.email;
+  console.log(`\Email: ${email}`);
+
+  // validate simple auth token
+  const auth = req.headers.authorization;
+  const [, token] = auth.match(/Bearer (.*)/);
+  const phrase = Buffer.from(token, 'base64').toString();
+  const regex = new RegExp(`${email}SaaSMaster`);
+  const isValid = phrase.match(regex);
+
+  const storeEmail = async () => {
+    await database.storeDocument(dbconstants.signups, dbconstants.emailsCollection, email, req.body);
+    res.status(200).send();
+  }
+
+  if (isValid) {
+    storeEmail();
+  }
+});
+
+// validate code: this is an unauthenticated request that validates an email
+// has been authorized to join the beta
+app.post('/validatecode', function(req, res){
+  console.log('POST /validatecode');
+  const email = req.body.email;
+  console.log(`\Email: ${email}`);
+
+  // validate simple auth token
+  const auth = req.headers.authorization;
+  const [, token] = auth.match(/Bearer (.*)/);
+  const phrase = Buffer.from(token, 'base64').toString();
+  const regex = new RegExp(`${email}SaaSMaster`);
+  const isValid = phrase.match(regex);
+  
+  const validateEmail = async () => {
+    const data = await database.getDocument(dbconstants.signups, dbconstants.emailsCollection, email);
+    res.status(200).send(data);
+  }
+
+  if (isValid) {
+    validateEmail();
+  } else {
+    res.status(200).send();
+  }
+});
 
 // Get timesheets API endpoint (OLD - ONLY HERE TO SHOW jwtAuthz)
 app.get('/timesheets', checkJwt, jwtAuthz(['read:timesheets']), function(req, res){

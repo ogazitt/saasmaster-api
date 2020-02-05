@@ -2,6 +2,10 @@
 exports.systemInfo = '__system_info';
 exports.invokeInfo = '__invoke_info';
 
+// define signups "userId" and emails "collection"
+exports.signups = '__signups';
+exports.emailsCollection = 'emails';
+
 // name of history "collection" and metadata "collection"
 exports.history = '__history';
 

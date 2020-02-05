@@ -83,7 +83,7 @@ exports.getAllUsers = async () => {
   const users = await provider.getAllUsers();
 
   // filter out the system info synthetic user
-  return users.filter(u => u !== dbconstants.systemInfo);
+  return users.filter(u => u !== dbconstants.systemInfo && u !== dbconstants.signups);
 }
 
 // get user collections
