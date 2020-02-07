@@ -32,6 +32,9 @@ const datapipeline = require('./src/modules/datapipeline');
 const profile = require('./src/modules/profile');
 const connections = require('./src/modules/connections');
 
+// beta processing
+const beta = require('./src/modules/beta');
+
 // import google provider for checking JWT
 const google = require('./src/services/googleauth');
 
@@ -527,13 +530,13 @@ app.post('/requestaccess', function(req, res){
   const regex = new RegExp(`${email}SaaSMaster`);
   const isValid = phrase.match(regex);
 
-  const storeEmail = async () => {
-    await database.storeDocument(dbconstants.signups, dbconstants.emailsCollection, email, req.body);
+  const requestAccess = async () => {
+    await beta.requestAccess(email, req.body);
     res.status(200).send();
   }
 
   if (isValid) {
-    storeEmail();
+    requestAccess();
   }
 });
 
@@ -552,7 +555,7 @@ app.post('/validatecode', function(req, res){
   const isValid = phrase.match(regex);
   
   const validateEmail = async () => {
-    const data = await database.getDocument(dbconstants.signups, dbconstants.emailsCollection, email);
+    const data = beta.validateEmail(email);
     res.status(200).send(data);
   }
 
